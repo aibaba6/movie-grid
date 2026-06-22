@@ -143,28 +143,29 @@ const css = `
   .tray-ct{font-size:11px;color:var(--mist);}
   .tray-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;margin-bottom:20px;}
   .tc{position:relative;aspect-ratio:2/3;border-radius:7px;overflow:hidden;
-    border:0.5px solid var(--mist);
-    transition:border-color .15s;user-select:none;touch-action:none;}
+    border:0.5px solid var(--mist);cursor:grab;
+    transition:border-color .15s,transform .12s,opacity .15s;user-select:none;touch-action:none;}
+  .tc:active{cursor:grabbing;}
+  .tc.dt{border:2px solid var(--volt);transform:scale(1.05);}
+  .tc.dragging{opacity:0.4;}
   .tc.excl{opacity:0.2;}
   .tc img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;}
   .tc-rm{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;
     background:rgba(18,22,19,0.85);color:#fff;font-size:9px;border:none;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;}
+    display:flex;align-items:center;justify-content:center;z-index:2;}
   .tc-name{position:absolute;bottom:0;left:0;right:0;
     background:linear-gradient(transparent,rgba(18,22,19,0.72));
     color:#fff;font-size:7px;padding:10px 4px 3px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;}
-  .tc-drag-hint{
-    position:absolute;top:3px;left:3px;
-    font-size:10px;color:rgba(255,255,255,0.6);line-height:1;pointer-events:none;
-  }
 
-  /* BOTTOM PANEL — スマホは縦積み、PCは横並び */
+  /* BOTTOM PANEL — プレビューが先（PC=左 / スマホ=上）、設定が後（PC=右 / スマホ=下） */
   .bottom{display:flex;flex-direction:column;gap:24px;}
+  .preview-col{order:1;}
+  .settings{order:2;}
   @media(min-width:768px){
     .bottom{flex-direction:row;align-items:start;}
-    .settings{flex:1;}
-    .preview-col{width:260px;flex-shrink:0;position:sticky;top:66px;}
+    .preview-col{flex:1;position:sticky;top:66px;min-width:0;}
+    .settings{flex:1;min-width:0;}
   }
 
   /* SETTINGS */
@@ -302,6 +303,7 @@ export default function App() {
   const [saveStatus, setSaveStatus]   = useState("");
   const [exporting, setExporting]     = useState(false);
   const [visitors, setVisitors]       = useState(null);
+  const [previewW, setPreviewW]       = useState(260);
 
   // 検索
   const [query, setQuery]             = useState("");
@@ -311,6 +313,7 @@ export default function App() {
   const debouncedQ                    = useDebounce(query, 450);
 
   const fileInputRef = useRef(null);
+  const previewBoxRef = useRef(null);
 
   const maxSlots      = cols * rows;
   const visibleImages = images.slice(0, maxSlots);
@@ -322,6 +325,17 @@ export default function App() {
       .then(r => r.json())
       .then(d => setVisitors(d.count))
       .catch(() => {});
+  }, []);
+
+  // プレビュー幅をコンテナに追従
+  useEffect(() => {
+    if (!previewBoxRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect?.width;
+      if (w) setPreviewW(Math.round(w));
+    });
+    ro.observe(previewBoxRef.current);
+    return () => ro.disconnect();
   }, []);
 
   // 設定復元
@@ -497,8 +511,8 @@ export default function App() {
     }
   };
 
-  // プレビュー計算
-  const PW    = 260;
+  // プレビュー計算 — コンテナ幅に追従（PCは画面半分、スマホは全幅）
+  const PW    = previewW || 260;
   const PH    = Math.round(PW * ratio.h / ratio.w);
   const pCols = n > 0 ? Math.min(cols, n) : cols;
   const pRows = n > 0 ? Math.ceil(n / pCols) : rows;
@@ -593,21 +607,36 @@ export default function App() {
           <>
             <div className="tray-hd">
               <span className="lbl">選択済み</span>
-              <span className="tray-ct">{n}/{maxSlots}{images.length>maxSlots&&` · ${images.length-maxSlots}枚除外`}</span>
+              <span className="tray-ct">{n}/{maxSlots}{images.length>maxSlots&&` · ${images.length-maxSlots}枚除外`} · ドラッグで並替</span>
             </div>
             <div className="tray-grid">
               {images.map((img, i) => (
                 <div key={img.id}
-                  className={`tc${dragTarget===i?" dt":""}${i>=maxSlots?" excl":""}`}
+                  data-idx={i}
+                  className={`tc${dragTarget===i?" dt":""}${draggingIdx===i?" dragging":""}${i>=maxSlots?" excl":""}`}
                   draggable
                   onDragStart={e => { e.dataTransfer.effectAllowed="move"; setDraggingIdx(i); }}
                   onDragOver={e => { e.preventDefault(); setDragTarget(i); }}
                   onDragEnd={() => { setDraggingIdx(null); setDragTarget(null); }}
                   onDrop={e => { e.preventDefault(); if(draggingIdx!==null&&draggingIdx!==i) moveImage(draggingIdx,i); setDraggingIdx(null); setDragTarget(null); }}
-                  onTouchStart={() => { touchDrag.current = i; }}
+                  onTouchStart={() => { touchDrag.current = i; setDraggingIdx(i); }}
+                  onTouchMove={e => {
+                    e.preventDefault();
+                    const t = e.touches[0];
+                    const el = document.elementFromPoint(t.clientX, t.clientY);
+                    const cell = el?.closest("[data-idx]");
+                    if (cell) {
+                      const idx = parseInt(cell.getAttribute("data-idx"), 10);
+                      if (!isNaN(idx)) setDragTarget(idx);
+                    }
+                  }}
                   onTouchEnd={() => {
-                    // タッチ並び替えは左右スワイプで前後入れ替え
+                    const from = touchDrag.current;
+                    const to   = dragTarget;
+                    if (from !== null && to !== null && from !== to) moveImage(from, to);
                     touchDrag.current = null;
+                    setDraggingIdx(null);
+                    setDragTarget(null);
                   }}
                 >
                   <img src={img.thumb || img.src} alt={img.title} />
@@ -695,40 +724,43 @@ export default function App() {
               <span className="prev-ct">{n} 枚</span>
             </div>
 
-            <div style={{
-              width:PW, height:PH, background:bgColor,
-              borderRadius:10, border:"0.5px solid #c8d2c8",
-              overflow:"hidden", flexShrink:0, position:"relative",
-            }}>
-              <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}>
-                  {showTitle && (
-                    <div style={{ marginBottom:vTG, width:vAW, textAlign:"center", overflow:"hidden" }}>
-                      <span style={{
-                        display:"block", color:titleColor, fontSize:vTS,
-                        fontFamily:"'Noto Sans JP', sans-serif", fontWeight:titleWeight,
-                        whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", lineHeight:1.4,
-                      }}>{titleText}</span>
-                    </div>
-                  )}
-                  <div style={{ display:"flex", flexDirection:"column", gap:vGap }}>
-                    {Array.from({ length:pRows }, (_, ri) => (
-                      <div key={ri} style={{ display:"flex", gap:vGap }}>
-                        {Array.from({ length:pCols }, (_, ci) => {
-                          const img = visibleImages[ri*pCols+ci];
-                          return (
-                            <div key={ci} style={{
-                              width:vCW, height:vCH, borderRadius:3,
-                              overflow:"hidden", flexShrink:0,
-                              background: img?"transparent":`${textColor}18`,
-                            }}>
-                              {img && <img src={img.thumb||img.src} alt=""
-                                style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />}
-                            </div>
-                          );
-                        })}
+            {/* 幅100%の測定ラッパー。ResizeObserverでこの幅を取得 */}
+            <div ref={previewBoxRef} style={{ width:"100%" }}>
+              <div style={{
+                width:"100%", height:PH, background:bgColor,
+                borderRadius:10, border:"0.5px solid #c8d2c8",
+                overflow:"hidden", position:"relative",
+              }}>
+                <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}>
+                    {showTitle && (
+                      <div style={{ marginBottom:vTG, width:vAW, textAlign:"center", overflow:"hidden" }}>
+                        <span style={{
+                          display:"block", color:titleColor, fontSize:vTS,
+                          fontFamily:"'Noto Sans JP', sans-serif", fontWeight:titleWeight,
+                          whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", lineHeight:1.4,
+                        }}>{titleText}</span>
                       </div>
-                    ))}
+                    )}
+                    <div style={{ display:"flex", flexDirection:"column", gap:vGap }}>
+                      {Array.from({ length:pRows }, (_, ri) => (
+                        <div key={ri} style={{ display:"flex", gap:vGap }}>
+                          {Array.from({ length:pCols }, (_, ci) => {
+                            const img = visibleImages[ri*pCols+ci];
+                            return (
+                              <div key={ci} style={{
+                                width:vCW, height:vCH, borderRadius:3,
+                                overflow:"hidden", flexShrink:0,
+                                background: img?"transparent":`${textColor}18`,
+                              }}>
+                                {img && <img src={img.thumb||img.src} alt=""
+                                  style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
