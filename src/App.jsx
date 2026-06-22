@@ -166,7 +166,7 @@ const css = `
   .input-area{order:1;display:flex;flex-direction:column;gap:0;}
   .settings{order:2;display:flex;flex-direction:column;gap:16px;}
 
-  @media(min-width:860px){
+  @media(min-width:1100px){
     .layout{flex-direction:row;align-items:start;}
     .col-preview{order:1;flex:0 0 33%;max-width:33%;position:sticky;top:66px;min-width:0;}
     .col-right{order:2;flex:1;min-width:0;}
