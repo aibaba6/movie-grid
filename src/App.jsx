@@ -301,7 +301,6 @@ export default function App() {
   const fileInputRef = useRef(null);
   const previewBoxRef = useRef(null);
   const trayRef = useRef(null);
-  const pointerDrag = useRef({ active: false, from: null });
 
   const maxSlots      = cols * rows;
   const visibleImages = images.slice(0, maxSlots);
@@ -421,7 +420,7 @@ export default function App() {
     const a = [...prev]; const [x] = a.splice(from, 1); a.splice(to, 0, x); return a;
   });
 
-  // ── Pointer Events による並び替え（PC・スマホ統一）──
+  // ── Pointer Events による並び替え（window登録で確実に動作）──
   const findIdxFromPoint = (x, y) => {
     const el = document.elementFromPoint(x, y);
     const cell = el?.closest("[data-idx]");
@@ -430,30 +429,44 @@ export default function App() {
     return isNaN(idx) ? null : idx;
   };
 
+  const dragState = useRef({ active: false, from: null, target: null });
+
   const onPointerDown = (i) => (e) => {
-    // ×ボタン上では並び替えを開始しない
-    if (e.target.closest(".tc-rm")) return;
-    pointerDrag.current = { active: true, from: i };
+    if (e.target.closest(".tc-rm")) return; // ×ボタンは除外
+    e.preventDefault();
+    dragState.current = { active: true, from: i, target: i };
     setDraggingIdx(i);
     setDragTarget(i);
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-  };
 
-  const onPointerMove = (e) => {
-    if (!pointerDrag.current.active) return;
-    e.preventDefault();
-    const idx = findIdxFromPoint(e.clientX, e.clientY);
-    if (idx !== null) setDragTarget(idx);
-  };
+    const handleMove = (ev) => {
+      if (!dragState.current.active) return;
+      const px = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      const py = ev.touches ? ev.touches[0].clientY : ev.clientY;
+      const idx = findIdxFromPoint(px, py);
+      if (idx !== null) {
+        dragState.current.target = idx;
+        setDragTarget(idx);
+      }
+    };
 
-  const onPointerUp = () => {
-    const { active, from } = pointerDrag.current;
-    if (active && from !== null && dragTarget !== null && from !== dragTarget) {
-      moveImage(from, dragTarget);
-    }
-    pointerDrag.current = { active: false, from: null };
-    setDraggingIdx(null);
-    setDragTarget(null);
+    const handleUp = () => {
+      const { from, target } = dragState.current;
+      if (from !== null && target !== null && from !== target) {
+        moveImage(from, target);
+      }
+      dragState.current = { active: false, from: null, target: null };
+      setDraggingIdx(null);
+      setDragTarget(null);
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("touchmove", handleMove);
+      window.removeEventListener("touchend", handleUp);
+    };
+
+    window.addEventListener("pointermove", handleMove, { passive: false });
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("touchmove", handleMove, { passive: false });
+    window.addEventListener("touchend", handleUp);
   };
 
   const exportImage = async () => {
@@ -709,9 +722,6 @@ export default function App() {
                         data-idx={i}
                         className={`tc${dragTarget===i&&draggingIdx!==i?" dt":""}${draggingIdx===i?" dragging":""}${i>=maxSlots?" excl":""}`}
                         onPointerDown={onPointerDown(i)}
-                        onPointerMove={onPointerMove}
-                        onPointerUp={onPointerUp}
-                        onPointerCancel={onPointerUp}
                       >
                         <img src={img.thumb || img.src} alt={img.title} draggable={false} />
                         <button className="tc-rm" onClick={() => removeImage(img.id)} aria-label="削除">✕</button>
