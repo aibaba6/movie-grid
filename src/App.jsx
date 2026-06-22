@@ -147,7 +147,7 @@ const css = `
     transition:border-color .15s,transform .12s,opacity .15s;user-select:none;touch-action:none;}
   .tc:active{cursor:grabbing;}
   .tc.dt{border:2px solid var(--volt);transform:scale(1.05);}
-  .tc.dragging{opacity:0.4;}
+  .tc.dragging{opacity:0.7;border:2px solid var(--volt);transform:scale(1.08);box-shadow:0 4px 12px rgba(0,0,0,0.25);z-index:3;}
   .tc.excl{opacity:0.2;}
   .tc img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;}
   .tc-rm{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;
@@ -429,32 +429,35 @@ export default function App() {
     return isNaN(idx) ? null : idx;
   };
 
-  const dragState = useRef({ active: false, from: null, target: null });
+  const dragState = useRef({ active: false, current: null });
 
   const onPointerDown = (i) => (e) => {
     if (e.target.closest(".tc-rm")) return; // ×ボタンは除外
     e.preventDefault();
-    dragState.current = { active: true, from: i, target: i };
+    dragState.current = { active: true, current: i };
     setDraggingIdx(i);
-    setDragTarget(i);
 
     const handleMove = (ev) => {
       if (!dragState.current.active) return;
       const px = ev.touches ? ev.touches[0].clientX : ev.clientX;
       const py = ev.touches ? ev.touches[0].clientY : ev.clientY;
-      const idx = findIdxFromPoint(px, py);
-      if (idx !== null) {
-        dragState.current.target = idx;
-        setDragTarget(idx);
+      const over = findIdxFromPoint(px, py);
+      const cur  = dragState.current.current;
+      // 別のセルの上に来たら、その場で即座に並び替える
+      if (over !== null && over !== cur) {
+        setImages(prev => {
+          const a = [...prev];
+          const [x] = a.splice(cur, 1);
+          a.splice(over, 0, x);
+          return a;
+        });
+        dragState.current.current = over;
+        setDraggingIdx(over);
       }
     };
 
     const handleUp = () => {
-      const { from, target } = dragState.current;
-      if (from !== null && target !== null && from !== target) {
-        moveImage(from, target);
-      }
-      dragState.current = { active: false, from: null, target: null };
+      dragState.current = { active: false, current: null };
       setDraggingIdx(null);
       setDragTarget(null);
       window.removeEventListener("pointermove", handleMove);
@@ -720,7 +723,7 @@ export default function App() {
                     {images.map((img, i) => (
                       <div key={img.id}
                         data-idx={i}
-                        className={`tc${dragTarget===i&&draggingIdx!==i?" dt":""}${draggingIdx===i?" dragging":""}${i>=maxSlots?" excl":""}`}
+                        className={`tc${draggingIdx===i?" dragging":""}${i>=maxSlots?" excl":""}`}
                         onPointerDown={onPointerDown(i)}
                       >
                         <img src={img.thumb || img.src} alt={img.title} draggable={false} />
