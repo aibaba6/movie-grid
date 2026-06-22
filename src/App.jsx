@@ -169,13 +169,16 @@ const css = `
   .input-area{order:1;display:flex;flex-direction:column;gap:0;}
   .settings{order:3;display:flex;flex-direction:column;gap:16px;}
 
-  @media(min-width:1024px){
+  @media(min-width:768px){
     .layout{flex-direction:row;align-items:start;}
-    .col-preview{order:1;flex:0 0 33%;max-width:33%;position:sticky;top:66px;min-width:0;}
+    .col-preview{order:1;flex:0 0 40%;max-width:40%;position:sticky;top:66px;min-width:0;}
     /* PCでは col-right を実体化して右カラムに戻す */
     .col-right{display:flex;flex-direction:column;gap:24px;order:2;flex:1;min-width:0;}
     .input-area{order:0;}
     .settings{order:0;}
+  }
+  @media(min-width:1024px){
+    .col-preview{flex:0 0 33%;max-width:33%;}
   }
 
   /* SETTINGS */
