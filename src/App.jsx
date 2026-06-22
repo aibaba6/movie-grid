@@ -265,24 +265,6 @@ function ColorInput({ label, value, onChange }) {
   );
 }
 
-// タッチ対応の並び替え
-function useTouchSort(images, setImages) {
-  const dragging = useRef(null);
-  const onTouchStart = (i) => { dragging.current = i; };
-  const onTouchEnd   = (i) => {
-    if (dragging.current !== null && dragging.current !== i) {
-      setImages(prev => {
-        const a = [...prev];
-        const [x] = a.splice(dragging.current, 1);
-        a.splice(i, 0, x);
-        return a;
-      });
-    }
-    dragging.current = null;
-  };
-  return { onTouchStart, onTouchEnd };
-}
-
 export default function App() {
   const [images, setImages]           = useState([]);
   const [cols, setCols]               = useState(DEFAULT.cols);
@@ -314,6 +296,8 @@ export default function App() {
 
   const fileInputRef = useRef(null);
   const previewBoxRef = useRef(null);
+  const trayRef = useRef(null);
+  const pointerDrag = useRef({ active: false, from: null });
 
   const maxSlots      = cols * rows;
   const visibleImages = images.slice(0, maxSlots);
@@ -428,13 +412,45 @@ export default function App() {
 
   const removeImage = id => setImages(prev => prev.filter(i => i.id !== id));
 
-  // PC: ドラッグ&ドロップ並び替え
+  // 並び替え（配列操作）
   const moveImage = (from, to) => setImages(prev => {
     const a = [...prev]; const [x] = a.splice(from, 1); a.splice(to, 0, x); return a;
   });
 
-  // スマホ: タッチ並び替え
-  const touchDrag = useRef(null);
+  // ── Pointer Events による並び替え（PC・スマホ統一）──
+  const findIdxFromPoint = (x, y) => {
+    const el = document.elementFromPoint(x, y);
+    const cell = el?.closest("[data-idx]");
+    if (!cell) return null;
+    const idx = parseInt(cell.getAttribute("data-idx"), 10);
+    return isNaN(idx) ? null : idx;
+  };
+
+  const onPointerDown = (i) => (e) => {
+    // ×ボタン上では並び替えを開始しない
+    if (e.target.closest(".tc-rm")) return;
+    pointerDrag.current = { active: true, from: i };
+    setDraggingIdx(i);
+    setDragTarget(i);
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+
+  const onPointerMove = (e) => {
+    if (!pointerDrag.current.active) return;
+    e.preventDefault();
+    const idx = findIdxFromPoint(e.clientX, e.clientY);
+    if (idx !== null) setDragTarget(idx);
+  };
+
+  const onPointerUp = () => {
+    const { active, from } = pointerDrag.current;
+    if (active && from !== null && dragTarget !== null && from !== dragTarget) {
+      moveImage(from, dragTarget);
+    }
+    pointerDrag.current = { active: false, from: null };
+    setDraggingIdx(null);
+    setDragTarget(null);
+  };
 
   const exportImage = async () => {
     if (n === 0 || exporting) return;
@@ -609,37 +625,17 @@ export default function App() {
               <span className="lbl">選択済み</span>
               <span className="tray-ct">{n}/{maxSlots}{images.length>maxSlots&&` · ${images.length-maxSlots}枚除外`} · ドラッグで並替</span>
             </div>
-            <div className="tray-grid">
+            <div className="tray-grid" ref={trayRef}>
               {images.map((img, i) => (
                 <div key={img.id}
                   data-idx={i}
-                  className={`tc${dragTarget===i?" dt":""}${draggingIdx===i?" dragging":""}${i>=maxSlots?" excl":""}`}
-                  draggable
-                  onDragStart={e => { e.dataTransfer.effectAllowed="move"; setDraggingIdx(i); }}
-                  onDragOver={e => { e.preventDefault(); setDragTarget(i); }}
-                  onDragEnd={() => { setDraggingIdx(null); setDragTarget(null); }}
-                  onDrop={e => { e.preventDefault(); if(draggingIdx!==null&&draggingIdx!==i) moveImage(draggingIdx,i); setDraggingIdx(null); setDragTarget(null); }}
-                  onTouchStart={() => { touchDrag.current = i; setDraggingIdx(i); }}
-                  onTouchMove={e => {
-                    e.preventDefault();
-                    const t = e.touches[0];
-                    const el = document.elementFromPoint(t.clientX, t.clientY);
-                    const cell = el?.closest("[data-idx]");
-                    if (cell) {
-                      const idx = parseInt(cell.getAttribute("data-idx"), 10);
-                      if (!isNaN(idx)) setDragTarget(idx);
-                    }
-                  }}
-                  onTouchEnd={() => {
-                    const from = touchDrag.current;
-                    const to   = dragTarget;
-                    if (from !== null && to !== null && from !== to) moveImage(from, to);
-                    touchDrag.current = null;
-                    setDraggingIdx(null);
-                    setDragTarget(null);
-                  }}
+                  className={`tc${dragTarget===i&&draggingIdx!==i?" dt":""}${draggingIdx===i?" dragging":""}${i>=maxSlots?" excl":""}`}
+                  onPointerDown={onPointerDown(i)}
+                  onPointerMove={onPointerMove}
+                  onPointerUp={onPointerUp}
+                  onPointerCancel={onPointerUp}
                 >
-                  <img src={img.thumb || img.src} alt={img.title} />
+                  <img src={img.thumb || img.src} alt={img.title} draggable={false} />
                   <button className="tc-rm" onClick={() => removeImage(img.id)} aria-label="削除">✕</button>
                   <span className="tc-name">{img.title}</span>
                 </div>
