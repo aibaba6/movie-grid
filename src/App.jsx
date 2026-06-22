@@ -73,7 +73,7 @@ const css = `
   .sub{font-size:12px;color:var(--sage);margin-top:6px;line-height:1.5;}
 
   /* SEARCH */
-  .search-wrap{margin:20px 0;position:relative;}
+  .search-wrap{margin:0 0 20px;position:relative;}
   .search-inp{
     width:100%;padding:12px 16px;border-radius:12px;
     border:1px solid var(--mist);background:white;
@@ -159,17 +159,22 @@ const css = `
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;}
 
   /* BOTTOM PANEL — プレビューが先（PC=左 / スマホ=上）、設定が後（PC=右 / スマホ=下） */
-  .bottom{display:flex;flex-direction:column;gap:24px;}
-  .preview-col{order:1;}
-  .settings{order:2;}
-  @media(min-width:768px){
-    .bottom{flex-direction:row;align-items:start;}
-    .preview-col{flex:1;position:sticky;top:66px;min-width:0;}
-    .settings{flex:1;min-width:0;}
+  /* LAYOUT — スマホ:縦積み（入力→プレビュー→設定） / PC:プレビュー左1/3 + 右2/3 */
+  .layout{display:flex;flex-direction:column;gap:24px;}
+  .col-preview{order:2;display:flex;flex-direction:column;gap:12px;}
+  .col-right{order:1;display:flex;flex-direction:column;gap:24px;}
+  .input-area{order:1;display:flex;flex-direction:column;gap:0;}
+  .settings{order:2;display:flex;flex-direction:column;gap:16px;}
+
+  @media(min-width:860px){
+    .layout{flex-direction:row;align-items:start;}
+    .col-preview{order:1;flex:0 0 33%;max-width:33%;position:sticky;top:66px;min-width:0;}
+    .col-right{order:2;flex:1;min-width:0;}
+    .input-area{order:0;}
+    .settings{order:0;}
   }
 
   /* SETTINGS */
-  .settings{display:flex;flex-direction:column;gap:16px;}
   .sect-title{font-size:11px;color:var(--sage);letter-spacing:0.1em;text-transform:uppercase;
     margin-bottom:8px;padding-bottom:6px;border-bottom:0.5px solid var(--mist);}
 
@@ -210,7 +215,6 @@ const css = `
     padding:6px 0;outline:none;margin-top:8px;}
 
   /* PREVIEW */
-  .preview-col{display:flex;flex-direction:column;gap:12px;}
   .prev-hd{display:flex;justify-content:space-between;align-items:baseline;}
   .prev-ct{font-size:11px;color:var(--mist);}
 
@@ -564,89 +568,163 @@ export default function App() {
           <p className="sub">タイトルを検索してポスターを選ぶ。並べてグリッドを作る。</p>
         </div>
 
-        {/* SEARCH */}
-        <div className="search-wrap">
-          <div className="lang-toggle">
-            {[["ja-JP","日本語"],["en-US","English"]].map(([v,l]) => (
-              <button key={v} className={`lang-btn${lang===v?" on":""}`}
-                onClick={() => setLang(v)}>{l}</button>
-            ))}
-          </div>
-          <input
-            type="search" className="search-inp"
-            placeholder="映画タイトルを検索…"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            autoComplete="off"
-          />
-          {searching && <p className="searching-msg">検索中…</p>}
-          {searchResults.length > 0 && (
-            <div className="results-grid" style={{ marginTop:10 }}>
-              {searchResults.map(m => {
-                const added = images.some(i => i.tmdbId === m.id);
-                return (
-                  <div key={m.id}
-                    className={`res-card${added?" selected":""}`}
-                    onClick={() => !added && addFromSearch(m)}>
-                    <img src={m.posterSmall} alt={m.title} loading="lazy" />
-                    {added && <div className="res-card-check">✓</div>}
-                    <div className="res-card-title">{m.title} {m.year && `(${m.year})`}</div>
+        <div className="layout">
+
+          {/* ── LEFT: PREVIEW (PC=左1/3) ── */}
+          <div className="col-preview">
+            <div className="prev-hd">
+              <span className="lbl">プレビュー</span>
+              <span className="prev-ct">{n} 枚</span>
+            </div>
+
+            <div ref={previewBoxRef} style={{ width:"100%" }}>
+              <div style={{
+                width:"100%", height:PH, background:bgColor,
+                borderRadius:10, border:"0.5px solid #c8d2c8",
+                overflow:"hidden", position:"relative",
+              }}>
+                <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}>
+                    {showTitle && (
+                      <div style={{ marginBottom:vTG, width:vAW, textAlign:"center", overflow:"hidden" }}>
+                        <span style={{
+                          display:"block", color:titleColor, fontSize:vTS,
+                          fontFamily:"'Noto Sans JP', sans-serif", fontWeight:titleWeight,
+                          whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", lineHeight:1.4,
+                        }}>{titleText}</span>
+                      </div>
+                    )}
+                    <div style={{ display:"flex", flexDirection:"column", gap:vGap }}>
+                      {Array.from({ length:pRows }, (_, ri) => (
+                        <div key={ri} style={{ display:"flex", gap:vGap }}>
+                          {Array.from({ length:pCols }, (_, ci) => {
+                            const img = visibleImages[ri*pCols+ci];
+                            return (
+                              <div key={ci} style={{
+                                width:vCW, height:vCH, borderRadius:3,
+                                overflow:"hidden", flexShrink:0,
+                                background: img?"transparent":`${textColor}18`,
+                              }}>
+                                {img && <img src={img.thumb||img.src} alt=""
+                                  style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-          {!searching && query && searchResults.length === 0 && (
-            <p className="searching-msg">「{query}」の結果なし</p>
-          )}
-        </div>
-
-        {/* DROP ZONE */}
-        <div className="sec-divider">
-          <div className="sec-divider-line" />
-          <span className="sec-divider-lbl">または画像をアップロード</span>
-          <div className="sec-divider-line" />
-        </div>
-        <div className={`drop-area${dropOver?" over":""}`}
-          onClick={() => fileInputRef.current?.click()}
-          onDragOver={e => { e.preventDefault(); setDropOver(true); }}
-          onDragLeave={() => setDropOver(false)}
-          onDrop={e => { e.preventDefault(); setDropOver(false); handleFiles(e.dataTransfer.files); }}>
-          <p className="drop-main">↓ 画像をドロップ / タップして選択</p>
-          <p className="drop-sub">JPG · PNG · WEBP</p>
-          <input ref={fileInputRef} type="file" multiple accept="image/*"
-            style={{ display:"none" }} onChange={e => handleFiles(e.target.files)} />
-        </div>
-
-        {/* TRAY */}
-        {images.length > 0 && (
-          <>
-            <div className="tray-hd">
-              <span className="lbl">選択済み</span>
-              <span className="tray-ct">{n}/{maxSlots}{images.length>maxSlots&&` · ${images.length-maxSlots}枚除外`} · ドラッグで並替</span>
-            </div>
-            <div className="tray-grid" ref={trayRef}>
-              {images.map((img, i) => (
-                <div key={img.id}
-                  data-idx={i}
-                  className={`tc${dragTarget===i&&draggingIdx!==i?" dt":""}${draggingIdx===i?" dragging":""}${i>=maxSlots?" excl":""}`}
-                  onPointerDown={onPointerDown(i)}
-                  onPointerMove={onPointerMove}
-                  onPointerUp={onPointerUp}
-                  onPointerCancel={onPointerUp}
-                >
-                  <img src={img.thumb || img.src} alt={img.title} draggable={false} />
-                  <button className="tc-rm" onClick={() => removeImage(img.id)} aria-label="削除">✕</button>
-                  <span className="tc-name">{img.title}</span>
                 </div>
-              ))}
+              </div>
             </div>
-          </>
-        )}
 
-        {/* BOTTOM */}
-        <div className="bottom">
-          <div className="settings">
+            <button className={`exp${exporting?" loading":""}`}
+              onClick={exportImage} disabled={n===0||exporting}>
+              {exporting?"書き出し中…":"PNG書き出し (1440px) →"}
+            </button>
+
+            <div className="save-row">
+              <button className="save-btn" onClick={saveSettings}>↓ 設定を保存</button>
+              <button className="reset-btn" onClick={resetSettings}>リセット</button>
+            </div>
+
+            <p className="st">
+              {saveStatus==="saved"&&"✓ 設定を保存しました"}
+              {saveStatus==="reset"&&"✓ デフォルトに戻しました"}
+              {saveStatus==="error"&&"保存に失敗しました"}
+            </p>
+
+            <p className="hint">セル比率はポスター標準の 2:3 固定。出力 1440px</p>
+          </div>
+
+          {/* ── RIGHT: INPUT + SETTINGS (PC=右2/3) ── */}
+          <div className="col-right">
+
+            {/* INPUT AREA — SP:上 */}
+            <div className="input-area">
+              {/* SEARCH */}
+              <div className="search-wrap">
+                <div className="lang-toggle">
+                  {[["ja-JP","日本語"],["en-US","English"]].map(([v,l]) => (
+                    <button key={v} className={`lang-btn${lang===v?" on":""}`}
+                      onClick={() => setLang(v)}>{l}</button>
+                  ))}
+                </div>
+                <input
+                  type="search" className="search-inp"
+                  placeholder="映画タイトルを検索…"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  autoComplete="off"
+                />
+                {searching && <p className="searching-msg">検索中…</p>}
+                {searchResults.length > 0 && (
+                  <div className="results-grid" style={{ marginTop:10 }}>
+                    {searchResults.map(m => {
+                      const added = images.some(i => i.tmdbId === m.id);
+                      return (
+                        <div key={m.id}
+                          className={`res-card${added?" selected":""}`}
+                          onClick={() => !added && addFromSearch(m)}>
+                          <img src={m.posterSmall} alt={m.title} loading="lazy" />
+                          {added && <div className="res-card-check">✓</div>}
+                          <div className="res-card-title">{m.title} {m.year && `(${m.year})`}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {!searching && query && searchResults.length === 0 && (
+                  <p className="searching-msg">「{query}」の結果なし</p>
+                )}
+              </div>
+
+              {/* DROP ZONE */}
+              <div className="sec-divider">
+                <div className="sec-divider-line" />
+                <span className="sec-divider-lbl">または画像をアップロード</span>
+                <div className="sec-divider-line" />
+              </div>
+              <div className={`drop-area${dropOver?" over":""}`}
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={e => { e.preventDefault(); setDropOver(true); }}
+                onDragLeave={() => setDropOver(false)}
+                onDrop={e => { e.preventDefault(); setDropOver(false); handleFiles(e.dataTransfer.files); }}>
+                <p className="drop-main">↓ 画像をドロップ / タップして選択</p>
+                <p className="drop-sub">JPG · PNG · WEBP</p>
+                <input ref={fileInputRef} type="file" multiple accept="image/*"
+                  style={{ display:"none" }} onChange={e => handleFiles(e.target.files)} />
+              </div>
+
+              {/* TRAY */}
+              {images.length > 0 && (
+                <>
+                  <div className="tray-hd">
+                    <span className="lbl">選択済み</span>
+                    <span className="tray-ct">{n}/{maxSlots}{images.length>maxSlots&&` · ${images.length-maxSlots}枚除外`} · ドラッグで並替</span>
+                  </div>
+                  <div className="tray-grid" ref={trayRef}>
+                    {images.map((img, i) => (
+                      <div key={img.id}
+                        data-idx={i}
+                        className={`tc${dragTarget===i&&draggingIdx!==i?" dt":""}${draggingIdx===i?" dragging":""}${i>=maxSlots?" excl":""}`}
+                        onPointerDown={onPointerDown(i)}
+                        onPointerMove={onPointerMove}
+                        onPointerUp={onPointerUp}
+                        onPointerCancel={onPointerUp}
+                      >
+                        <img src={img.thumb || img.src} alt={img.title} draggable={false} />
+                        <button className="tc-rm" onClick={() => removeImage(img.id)} aria-label="削除">✕</button>
+                        <span className="tc-name">{img.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* SETTINGS — SP:下 */}
+            <div className="settings">
 
             <div>
               <p className="sect-title">グリッド</p>
@@ -711,76 +789,9 @@ export default function App() {
               )}
             </div>
 
-          </div>
-
-          {/* PREVIEW */}
-          <div className="preview-col">
-            <div className="prev-hd">
-              <span className="lbl">プレビュー</span>
-              <span className="prev-ct">{n} 枚</span>
-            </div>
-
-            {/* 幅100%の測定ラッパー。ResizeObserverでこの幅を取得 */}
-            <div ref={previewBoxRef} style={{ width:"100%" }}>
-              <div style={{
-                width:"100%", height:PH, background:bgColor,
-                borderRadius:10, border:"0.5px solid #c8d2c8",
-                overflow:"hidden", position:"relative",
-              }}>
-                <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}>
-                    {showTitle && (
-                      <div style={{ marginBottom:vTG, width:vAW, textAlign:"center", overflow:"hidden" }}>
-                        <span style={{
-                          display:"block", color:titleColor, fontSize:vTS,
-                          fontFamily:"'Noto Sans JP', sans-serif", fontWeight:titleWeight,
-                          whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", lineHeight:1.4,
-                        }}>{titleText}</span>
-                      </div>
-                    )}
-                    <div style={{ display:"flex", flexDirection:"column", gap:vGap }}>
-                      {Array.from({ length:pRows }, (_, ri) => (
-                        <div key={ri} style={{ display:"flex", gap:vGap }}>
-                          {Array.from({ length:pCols }, (_, ci) => {
-                            const img = visibleImages[ri*pCols+ci];
-                            return (
-                              <div key={ci} style={{
-                                width:vCW, height:vCH, borderRadius:3,
-                                overflow:"hidden", flexShrink:0,
-                                background: img?"transparent":`${textColor}18`,
-                              }}>
-                                {img && <img src={img.thumb||img.src} alt=""
-                                  style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <button className={`exp${exporting?" loading":""}`}
-              onClick={exportImage} disabled={n===0||exporting}>
-              {exporting?"書き出し中…":"PNG書き出し (1440px) →"}
-            </button>
-
-            <div className="save-row">
-              <button className="save-btn" onClick={saveSettings}>↓ 設定を保存</button>
-              <button className="reset-btn" onClick={resetSettings}>リセット</button>
-            </div>
-
-            <p className="st">
-              {saveStatus==="saved"&&"✓ 設定を保存しました"}
-              {saveStatus==="reset"&&"✓ デフォルトに戻しました"}
-              {saveStatus==="error"&&"保存に失敗しました"}
-            </p>
-
-            <p className="hint">セル比率はポスター標準の 2:3 固定。出力 1440px</p>
-          </div>
-        </div>
+            </div>{/* /settings */}
+          </div>{/* /col-right */}
+        </div>{/* /layout */}
       </div>
     </>
   );
