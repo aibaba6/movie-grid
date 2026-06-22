@@ -159,17 +159,21 @@ const css = `
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;}
 
   /* BOTTOM PANEL — プレビューが先（PC=左 / スマホ=上）、設定が後（PC=右 / スマホ=下） */
-  /* LAYOUT — スマホ:縦積み（入力→プレビュー→設定） / PC:プレビュー左1/3 + 右2/3 */
+  /* LAYOUT
+     タブレット以下:縦積み（検索/DnD → プレビュー → 設定）
+     PC(1024+):2カラム（プレビュー左1/3 + 右2/3に検索/DnD/設定） */
   .layout{display:flex;flex-direction:column;gap:24px;}
+  /* 縦積み時は col-preview / col-right の枠を透過させ、中身を直接並べる */
+  .col-right{display:contents;}
   .col-preview{order:2;display:flex;flex-direction:column;gap:12px;}
-  .col-right{order:1;display:flex;flex-direction:column;gap:24px;}
   .input-area{order:1;display:flex;flex-direction:column;gap:0;}
-  .settings{order:2;display:flex;flex-direction:column;gap:16px;}
+  .settings{order:3;display:flex;flex-direction:column;gap:16px;}
 
-  @media(min-width:1100px){
+  @media(min-width:1024px){
     .layout{flex-direction:row;align-items:start;}
     .col-preview{order:1;flex:0 0 33%;max-width:33%;position:sticky;top:66px;min-width:0;}
-    .col-right{order:2;flex:1;min-width:0;}
+    /* PCでは col-right を実体化して右カラムに戻す */
+    .col-right{display:flex;flex-direction:column;gap:24px;order:2;flex:1;min-width:0;}
     .input-area{order:0;}
     .settings{order:0;}
   }
