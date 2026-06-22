@@ -1,10 +1,18 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
 const RATIOS = [
-  { id: "3:4",  label: "3:4",  w: 3, h: 4  },
-  { id: "4:5",  label: "4:5",  w: 4, h: 5  },
-  { id: "1:1",  label: "1:1",  w: 1, h: 1  },
-  { id: "16:9", label: "16:9", w: 16, h: 9 },
+  // 縦長
+  { id: "9:16", label: "9:16", w: 9,  h: 16 },
+  { id: "2:3",  label: "2:3",  w: 2,  h: 3  },
+  { id: "3:4",  label: "3:4",  w: 3,  h: 4  },
+  { id: "4:5",  label: "4:5",  w: 4,  h: 5  },
+  // 正方形
+  { id: "1:1",  label: "1:1",  w: 1,  h: 1  },
+  // 横長
+  { id: "5:4",  label: "5:4",  w: 5,  h: 4  },
+  { id: "4:3",  label: "4:3",  w: 4,  h: 3  },
+  { id: "3:2",  label: "3:2",  w: 3,  h: 2  },
+  { id: "16:9", label: "16:9", w: 16, h: 9  },
 ];
 
 const PRESETS = [
@@ -18,12 +26,14 @@ const PRESETS = [
 
 const STORAGE_KEY = "movie-grid-v2";
 const DEFAULT = {
-  cols:3, rows:3, ratioId:"3:4",
-  gap:3, padding:8,
+  cols:3, rows:2, ratioId:"3:4",
+  gap:10, padding:20,
   bgColor:"#0a0a0a", textColor:"#ffffff",
   showTitle:true, titleText:"2025年6月 鑑賞記録",
-  titleSize:18, titleWeight:300, titleColor:"#ffffff",
+  titleSize:25, titleWeight:400, titleColor:"#ffffff",
 };
+
+const DEFAULT_RATIO = RATIOS.find(r => r.id === DEFAULT.ratioId) || RATIOS[0];
 
 function useDebounce(v, d) {
   const [val, setVal] = useState(v);
@@ -276,7 +286,7 @@ export default function App() {
   const [images, setImages]           = useState([]);
   const [cols, setCols]               = useState(DEFAULT.cols);
   const [rows, setRows]               = useState(DEFAULT.rows);
-  const [ratio, setRatio]             = useState(RATIOS[0]);
+  const [ratio, setRatio]             = useState(DEFAULT_RATIO);
   const [gap, setGap]                 = useState(DEFAULT.gap);
   const [padding, setPadding]         = useState(DEFAULT.padding);
   const [bgColor, setBgColor]         = useState(DEFAULT.bgColor);
@@ -320,7 +330,7 @@ export default function App() {
       const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
       if (s.cols)          setCols(s.cols);
       if (s.rows)          setRows(s.rows);
-      if (s.ratioId)       setRatio(RATIOS.find(r => r.id === s.ratioId) || RATIOS[0]);
+      if (s.ratioId)       setRatio(RATIOS.find(r => r.id === s.ratioId) || DEFAULT_RATIO);
       if (s.gap        != null) setGap(s.gap);
       if (s.padding    != null) setPadding(s.padding);
       if (s.bgColor)       setBgColor(s.bgColor);
@@ -382,7 +392,7 @@ export default function App() {
   const resetSettings = () => {
     try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
     const d = DEFAULT;
-    setCols(d.cols); setRows(d.rows); setRatio(RATIOS[0]);
+    setCols(d.cols); setRows(d.rows); setRatio(DEFAULT_RATIO);
     setGap(d.gap); setPadding(d.padding);
     setBgColor(d.bgColor); setTextColor(d.textColor);
     setShowTitle(d.showTitle); setTitleText(d.titleText);
@@ -626,7 +636,7 @@ export default function App() {
               <p className="sect-title">テーマカラー</p>
               <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:2 }}>
                 <ColorInput label="背景" value={bgColor}   onChange={setBgColor}   />
-                <ColorInput label="文字" value={textColor} onChange={setTextColor} />
+                <ColorInput label="下地" value={textColor} onChange={setTextColor} />
               </div>
               <div className="presets">
                 {PRESETS.map(p => (
