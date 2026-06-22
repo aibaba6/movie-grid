@@ -420,31 +420,28 @@ export default function App() {
     const a = [...prev]; const [x] = a.splice(from, 1); a.splice(to, 0, x); return a;
   });
 
-  // ── Pointer Events による並び替え（window登録で確実に動作）──
-  const findIdxFromPoint = (x, y) => {
-    const el = document.elementFromPoint(x, y);
-    const cell = el?.closest("[data-idx]");
-    if (!cell) return null;
-    const idx = parseInt(cell.getAttribute("data-idx"), 10);
-    return isNaN(idx) ? null : idx;
-  };
-
-  const dragState = useRef({ active: false, current: null });
+  // ── Pointer Events による並び替え（プレビュー・トレイ両対応）──
+  const dragState = useRef({ active: false, current: null, scope: null });
 
   const onPointerDown = (i) => (e) => {
     if (e.target.closest(".tc-rm")) return; // ×ボタンは除外
     e.preventDefault();
-    dragState.current = { active: true, current: i };
+    const scope = e.currentTarget.getAttribute("data-scope");
+    dragState.current = { active: true, current: i, scope };
     setDraggingIdx(i);
 
     const handleMove = (ev) => {
       if (!dragState.current.active) return;
       const px = ev.touches ? ev.touches[0].clientX : ev.clientX;
       const py = ev.touches ? ev.touches[0].clientY : ev.clientY;
-      const over = findIdxFromPoint(px, py);
+      const el = document.elementFromPoint(px, py);
+      const cell = el?.closest("[data-idx]");
+      if (!cell) return;
+      // 同じスコープ（preview / tray）のセルのみ対象
+      if (cell.getAttribute("data-scope") !== dragState.current.scope) return;
+      const over = parseInt(cell.getAttribute("data-idx"), 10);
       const cur  = dragState.current.current;
-      // 別のセルの上に来たら、その場で即座に並び替える
-      if (over !== null && over !== cur) {
+      if (!isNaN(over) && over !== cur) {
         setImages(prev => {
           const a = [...prev];
           const [x] = a.splice(cur, 1);
@@ -457,7 +454,7 @@ export default function App() {
     };
 
     const handleUp = () => {
-      dragState.current = { active: false, current: null };
+      dragState.current = { active: false, current: null, scope: null };
       setDraggingIdx(null);
       setDragTarget(null);
       window.removeEventListener("pointermove", handleMove);
@@ -614,15 +611,25 @@ export default function App() {
                       {Array.from({ length:pRows }, (_, ri) => (
                         <div key={ri} style={{ display:"flex", gap:vGap }}>
                           {Array.from({ length:pCols }, (_, ci) => {
-                            const img = visibleImages[ri*pCols+ci];
+                            const realIdx = ri*pCols+ci;
+                            const img = visibleImages[realIdx];
                             return (
-                              <div key={ci} style={{
-                                width:vCW, height:vCH, borderRadius:3,
-                                overflow:"hidden", flexShrink:0,
-                                background: img?"transparent":`${textColor}18`,
-                              }}>
-                                {img && <img src={img.thumb||img.src} alt=""
-                                  style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />}
+                              <div key={ci}
+                                data-idx={img ? realIdx : undefined}
+                                data-scope={img ? "preview" : undefined}
+                                onPointerDown={img ? onPointerDown(realIdx) : undefined}
+                                style={{
+                                  width:vCW, height:vCH, borderRadius:3,
+                                  overflow:"hidden", flexShrink:0,
+                                  background: img?"transparent":`${textColor}18`,
+                                  cursor: img?"grab":"default",
+                                  touchAction: img?"none":"auto",
+                                  opacity: draggingIdx===realIdx?0.7:1,
+                                  outline: draggingIdx===realIdx?`2px solid var(--volt)`:"none",
+                                  transition:"opacity .12s, outline .12s",
+                                }}>
+                                {img && <img src={img.thumb||img.src} alt="" draggable={false}
+                                  style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", pointerEvents:"none" }} />}
                               </div>
                             );
                           })}
@@ -723,6 +730,7 @@ export default function App() {
                     {images.map((img, i) => (
                       <div key={img.id}
                         data-idx={i}
+                        data-scope="tray"
                         className={`tc${draggingIdx===i?" dragging":""}${i>=maxSlots?" excl":""}`}
                         onPointerDown={onPointerDown(i)}
                       >
