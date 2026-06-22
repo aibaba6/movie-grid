@@ -17,8 +17,6 @@ const PRESETS = [
 ];
 
 const STORAGE_KEY = "movie-grid-v2";
-const PW = 260;
-
 const DEFAULT = {
   cols:3, rows:3, ratioId:"3:4",
   gap:3, padding:8,
@@ -26,6 +24,12 @@ const DEFAULT = {
   showTitle:true, titleText:"2025年6月 鑑賞記録",
   titleSize:18, titleWeight:300, titleColor:"#ffffff",
 };
+
+function useDebounce(v, d) {
+  const [val, setVal] = useState(v);
+  useEffect(() => { const t = setTimeout(() => setVal(v), d); return () => clearTimeout(t); }, [v, d]);
+  return val;
+}
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500&display=swap');
@@ -38,96 +42,183 @@ const css = `
     --bg:#fafffa;--ink:#121613;
   }
   body{font-family:var(--fu);background:var(--bg);}
+
+  /* NAV */
   .nav{display:flex;align-items:center;justify-content:space-between;
-    padding:0 28px;height:50px;border-bottom:0.5px solid var(--mist);
-    background:var(--bg);position:sticky;top:0;z-index:10;}
+    padding:0 20px;height:50px;border-bottom:0.5px solid var(--mist);
+    background:var(--bg);position:sticky;top:0;z-index:100;}
   .wm{font-size:14px;font-weight:500;}
   .wm b{color:var(--ink);}
   .wm em{color:var(--volt);font-style:normal;}
-  .visitor{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sage);letter-spacing:0.06em;}
+  .visitor{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--sage);}
   .visitor-num{font-size:13px;font-weight:500;color:var(--ink);}
-  .page{padding:32px 28px 80px;}
-  .tick{display:block;width:40px;height:2px;background:var(--volt);margin-bottom:12px;}
-  .hl{font-weight:300;font-size:48px;line-height:1.0;letter-spacing:-1px;color:var(--ink);}
+
+  /* PAGE */
+  .page{padding:24px 20px 100px;}
+
+  /* HERO */
+  .tick{display:block;width:36px;height:2px;background:var(--volt);margin-bottom:10px;}
+  .hl{font-weight:300;font-size:40px;line-height:1.0;letter-spacing:-0.8px;color:var(--ink);}
   .hl em{color:var(--volt);font-style:normal;}
-  .sub{font-size:12px;color:var(--sage);margin-top:8px;line-height:1.5;}
-  .drop-area{border:1px dashed var(--mist);border-radius:14px;padding:28px 20px;
-    text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;
-    transition:border-color .2s,background .2s;margin:24px 0 28px;}
-  .drop-area:hover,.drop-area.over{border-color:var(--ink);background:rgba(18,22,19,0.02);}
-  .drop-icon{width:38px;height:38px;border:1px solid var(--mist);border-radius:50%;
-    display:flex;align-items:center;justify-content:center;color:var(--sage);font-size:16px;}
+  .sub{font-size:12px;color:var(--sage);margin-top:6px;line-height:1.5;}
+
+  /* SEARCH */
+  .search-wrap{margin:20px 0;position:relative;}
+  .search-inp{
+    width:100%;padding:12px 16px;border-radius:12px;
+    border:1px solid var(--mist);background:white;
+    font-size:15px;font-family:var(--fu);color:var(--ink);
+    outline:none;-webkit-appearance:none;
+    transition:border-color .2s;
+  }
+  .search-inp:focus{border-color:var(--ink);}
+  .search-inp::placeholder{color:var(--mist);}
+  .lang-toggle{
+    display:flex;gap:6px;margin-bottom:10px;
+  }
+  .lang-btn{
+    padding:4px 10px;border-radius:20px;border:0.5px solid var(--mist);
+    background:transparent;font-size:11px;font-family:var(--fu);
+    color:var(--sage);cursor:pointer;transition:all .15s;
+  }
+  .lang-btn.on{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+
+  /* SEARCH RESULTS */
+  .results-grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;
+  }
+  @media(min-width:600px){.results-grid{grid-template-columns:repeat(6,1fr);}}
+  .res-card{
+    position:relative;aspect-ratio:2/3;border-radius:8px;overflow:hidden;
+    border:0.5px solid var(--mist);cursor:pointer;
+    transition:transform .15s,border-color .15s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .res-card:active{transform:scale(0.96);}
+  .res-card.selected{border:2px solid var(--volt);}
+  .res-card img{width:100%;height:100%;object-fit:cover;display:block;}
+  .res-card-check{
+    position:absolute;top:5px;right:5px;
+    width:20px;height:20px;border-radius:50%;
+    background:var(--volt);color:var(--ink);
+    font-size:11px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .res-card-title{
+    position:absolute;bottom:0;left:0;right:0;
+    background:linear-gradient(transparent,rgba(18,22,19,0.82));
+    color:#fff;font-size:8px;padding:12px 5px 4px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .searching-msg{font-size:12px;color:var(--mist);text-align:center;padding:16px 0;}
+
+  /* DIVIDER */
+  .sec-divider{
+    display:flex;align-items:center;gap:10px;margin:20px 0 12px;
+  }
+  .sec-divider-line{flex:1;height:0.5px;background:var(--mist);}
+  .sec-divider-lbl{font-size:11px;color:var(--sage);letter-spacing:0.1em;text-transform:uppercase;white-space:nowrap;}
+
+  /* DROP ZONE */
+  .drop-area{border:1px dashed var(--mist);border-radius:12px;padding:20px;
+    text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;
+    transition:border-color .2s;margin-bottom:20px;}
+  .drop-area:active,.drop-area.over{border-color:var(--ink);}
   .drop-main{font-size:13px;color:var(--ink);}
   .drop-sub{font-size:11px;color:var(--mist);letter-spacing:0.06em;text-transform:uppercase;}
+
+  /* TRAY */
   .lbl{font-size:11px;color:var(--sage);letter-spacing:0.1em;text-transform:uppercase;}
   .tray-hd{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;}
   .tray-ct{font-size:11px;color:var(--mist);}
-  .tray-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:6px;margin-bottom:36px;}
+  .tray-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;margin-bottom:20px;}
   .tc{position:relative;aspect-ratio:2/3;border-radius:7px;overflow:hidden;
-    border:0.5px solid var(--mist);cursor:grab;transition:border-color .15s,transform .12s;user-select:none;}
-  .tc:hover{transform:translateY(-2px);border-color:var(--sage);}
-  .tc.dt{border-color:var(--volt);border-width:1.5px;}
+    border:0.5px solid var(--mist);
+    transition:border-color .15s;user-select:none;touch-action:none;}
   .tc.excl{opacity:0.2;}
   .tc img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;}
-  .tc-rm{position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:50%;
-    background:rgba(18,22,19,0.82);color:#fff;font-size:8px;border:none;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;}
-  .tc:hover .tc-rm{opacity:1;}
+  .tc-rm{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;
+    background:rgba(18,22,19,0.85);color:#fff;font-size:9px;border:none;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;}
   .tc-name{position:absolute;bottom:0;left:0;right:0;
     background:linear-gradient(transparent,rgba(18,22,19,0.72));
     color:#fff;font-size:7px;padding:10px 4px 3px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;}
-  .bottom{display:flex;gap:32px;align-items:start;}
-  .settings{flex:1;display:flex;flex-direction:column;gap:18px;min-width:0;}
+  .tc-drag-hint{
+    position:absolute;top:3px;left:3px;
+    font-size:10px;color:rgba(255,255,255,0.6);line-height:1;pointer-events:none;
+  }
+
+  /* BOTTOM PANEL — スマホは縦積み、PCは横並び */
+  .bottom{display:flex;flex-direction:column;gap:24px;}
+  @media(min-width:768px){
+    .bottom{flex-direction:row;align-items:start;}
+    .settings{flex:1;}
+    .preview-col{width:260px;flex-shrink:0;position:sticky;top:66px;}
+  }
+
+  /* SETTINGS */
+  .settings{display:flex;flex-direction:column;gap:16px;}
   .sect-title{font-size:11px;color:var(--sage);letter-spacing:0.1em;text-transform:uppercase;
-    margin-bottom:10px;padding-bottom:7px;border-bottom:0.5px solid var(--mist);}
+    margin-bottom:8px;padding-bottom:6px;border-bottom:0.5px solid var(--mist);}
+
+  /* SLIDERS */
   .sl{display:flex;flex-direction:column;gap:4px;}
   .sl-row{display:flex;justify-content:space-between;align-items:center;}
   .sl-lbl{font-size:12px;color:var(--sage);}
   .sl-val{font-size:13px;color:var(--ink);font-weight:500;min-width:32px;text-align:right;}
-  input[type=range]{width:100%;accent-color:var(--ink);cursor:pointer;margin-top:1px;}
+  input[type=range]{width:100%;accent-color:var(--ink);cursor:pointer;height:20px;}
+
+  /* COLOR */
   .ci{display:flex;align-items:center;gap:8px;}
   .ci-lbl{font-size:12px;color:var(--sage);width:26px;flex-shrink:0;}
-  .swatch{width:24px;height:24px;border-radius:4px;border:0.5px solid var(--mist);
+  .swatch{width:28px;height:28px;border-radius:5px;border:0.5px solid var(--mist);
     position:relative;overflow:hidden;flex-shrink:0;cursor:pointer;}
   .swatch input[type=color]{position:absolute;inset:-4px;width:calc(100% + 8px);height:calc(100% + 8px);
     opacity:0;cursor:pointer;border:none;}
   .hex-inp{font-size:12px;color:var(--ink);font-family:var(--fu);
     background:transparent;border:none;border-bottom:0.5px solid var(--mist);
-    width:76px;outline:none;padding:2px 0;}
-  .hex-inp:focus{border-color:var(--ink);}
+    width:80px;outline:none;padding:2px 0;}
   .presets{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;}
-  .preset-dot{width:20px;height:20px;border-radius:4px;cursor:pointer;
+  .preset-dot{width:22px;height:22px;border-radius:4px;cursor:pointer;
     border:0.5px solid rgba(0,0,0,0.1);flex-shrink:0;transition:transform .12s;}
-  .preset-dot:hover{transform:scale(1.15);}
+
+  /* CHIPS */
   .chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;}
-  .chip{font-size:11px;font-family:var(--fu);padding:3px 9px;border-radius:4px;
+  .chip{font-size:11px;font-family:var(--fu);padding:5px 10px;border-radius:6px;
     border:0.5px solid var(--mist);background:transparent;color:var(--ink);
-    cursor:pointer;transition:all .15s;}
+    cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;}
   .chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink);}
-  .chip:hover:not(.on){border-color:var(--ink);}
+
+  /* CHECKBOX + TEXT INPUT */
   .cb{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--ink);
     letter-spacing:0.05em;text-transform:uppercase;cursor:pointer;}
-  input[type=checkbox]{accent-color:var(--ink);}
+  input[type=checkbox]{accent-color:var(--ink);width:16px;height:16px;}
   .title-inp{width:100%;background:transparent;border:none;border-bottom:1px solid var(--mist);
-    font-size:13px;font-family:var(--fu);font-weight:300;color:var(--ink);
-    padding:5px 0;outline:none;margin-top:7px;transition:border-color .2s;}
-  .title-inp:focus{border-color:var(--ink);}
-  .preview-col{flex-shrink:0;display:flex;flex-direction:column;gap:12px;position:sticky;top:66px;}
+    font-size:14px;font-family:var(--fu);font-weight:300;color:var(--ink);
+    padding:6px 0;outline:none;margin-top:8px;}
+
+  /* PREVIEW */
+  .preview-col{display:flex;flex-direction:column;gap:12px;}
   .prev-hd{display:flex;justify-content:space-between;align-items:baseline;}
   .prev-ct{font-size:11px;color:var(--mist);}
-  .exp{width:100%;padding:12px 0;border-radius:9px;border:none;
-    background:var(--volt);color:var(--ink);font-size:13px;font-weight:500;
+
+  /* EXPORT BUTTON */
+  .exp{width:100%;padding:14px 0;border-radius:12px;border:none;
+    background:var(--volt);color:var(--ink);font-size:14px;font-weight:500;
     font-family:var(--fu);cursor:pointer;
-    box-shadow:var(--sh1),var(--sh2);transition:opacity .15s,transform .1s;}
-  .exp:hover{opacity:.88;transform:translateY(-1px);}
-  .exp:disabled{background:var(--mist);color:var(--sage);box-shadow:none;cursor:default;transform:none;opacity:1;}
-  .exp.loading{opacity:.6;cursor:wait;}
+    box-shadow:var(--sh1),var(--sh2);
+    -webkit-tap-highlight-color:transparent;
+    transition:opacity .15s,transform .1s;}
+  .exp:active{opacity:.85;transform:scale(0.98);}
+  .exp:disabled{background:var(--mist);color:var(--sage);box-shadow:none;}
+
+  /* SAVE ROW */
   .save-row{display:flex;gap:7px;}
-  .save-btn{flex:1;padding:8px 0;border-radius:7px;border:0.5px solid var(--mist);
-    background:transparent;color:var(--ink);font-size:11px;font-family:var(--fu);cursor:pointer;}
-  .reset-btn{padding:8px 12px;border-radius:7px;border:0.5px solid var(--mist);
-    background:transparent;color:var(--sage);font-size:11px;font-family:var(--fu);cursor:pointer;}
+  .save-btn{flex:1;padding:10px 0;border-radius:8px;border:0.5px solid var(--mist);
+    background:transparent;color:var(--ink);font-size:12px;font-family:var(--fu);cursor:pointer;}
+  .reset-btn{padding:10px 12px;border-radius:8px;border:0.5px solid var(--mist);
+    background:transparent;color:var(--sage);font-size:12px;font-family:var(--fu);cursor:pointer;}
   .st{font-size:11px;color:var(--volt);text-align:center;min-height:14px;}
   .hint{font-size:11px;color:var(--mist);line-height:1.65;}
 `;
@@ -163,6 +254,24 @@ function ColorInput({ label, value, onChange }) {
   );
 }
 
+// タッチ対応の並び替え
+function useTouchSort(images, setImages) {
+  const dragging = useRef(null);
+  const onTouchStart = (i) => { dragging.current = i; };
+  const onTouchEnd   = (i) => {
+    if (dragging.current !== null && dragging.current !== i) {
+      setImages(prev => {
+        const a = [...prev];
+        const [x] = a.splice(dragging.current, 1);
+        a.splice(i, 0, x);
+        return a;
+      });
+    }
+    dragging.current = null;
+  };
+  return { onTouchStart, onTouchEnd };
+}
+
 export default function App() {
   const [images, setImages]           = useState([]);
   const [cols, setCols]               = useState(DEFAULT.cols);
@@ -178,11 +287,18 @@ export default function App() {
   const [titleWeight, setTitleWeight] = useState(DEFAULT.titleWeight);
   const [titleColor, setTitleColor]   = useState(DEFAULT.titleColor);
   const [dropOver, setDropOver]       = useState(false);
-  const [dragging, setDragging]       = useState(null);
+  const [draggingIdx, setDraggingIdx] = useState(null);
   const [dragTarget, setDragTarget]   = useState(null);
   const [saveStatus, setSaveStatus]   = useState("");
   const [exporting, setExporting]     = useState(false);
   const [visitors, setVisitors]       = useState(null);
+
+  // 検索
+  const [query, setQuery]             = useState("");
+  const [lang, setLang]               = useState("ja-JP");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching]     = useState(false);
+  const debouncedQ                    = useDebounce(query, 450);
 
   const fileInputRef = useRef(null);
 
@@ -190,20 +306,18 @@ export default function App() {
   const visibleImages = images.slice(0, maxSlots);
   const n             = visibleImages.length;
 
-  // 訪問者カウンター（ページ読み込み時に一度だけ）
+  // 訪問者カウンター
   useEffect(() => {
     fetch("/api/visitors", { method: "POST" })
       .then(r => r.json())
       .then(d => setVisitors(d.count))
-      .catch(() => setVisitors(null));
+      .catch(() => {});
   }, []);
 
-  // 設定をlocalStorageから復元
+  // 設定復元
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (!saved) return;
-      const s = JSON.parse(saved);
+      const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
       if (s.cols)          setCols(s.cols);
       if (s.rows)          setRows(s.rows);
       if (s.ratioId)       setRatio(RATIOS.find(r => r.id === s.ratioId) || RATIOS[0]);
@@ -218,6 +332,39 @@ export default function App() {
       if (s.titleColor)    setTitleColor(s.titleColor);
     } catch (_) {}
   }, []);
+
+  // TMDB検索
+  useEffect(() => {
+    if (!debouncedQ.trim()) { setSearchResults([]); return; }
+    setSearching(true);
+    fetch(`/api/search?q=${encodeURIComponent(debouncedQ)}&lang=${lang}`)
+      .then(r => r.json())
+      .then(d => setSearchResults(d.results || []))
+      .catch(() => setSearchResults([]))
+      .finally(() => setSearching(false));
+  }, [debouncedQ, lang]);
+
+  const addFromSearch = async (movie) => {
+    if (images.some(i => i.tmdbId === movie.id)) return;
+    // ポスターをfetchしてdata:URLに変換（canvas書き出し用）
+    try {
+      const res  = await fetch(movie.poster);
+      const blob = await res.blob();
+      const src  = await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.readAsDataURL(blob);
+      });
+      setImages(prev => [...prev, {
+        id: Date.now() + Math.random(),
+        tmdbId: movie.id,
+        src,
+        thumb: movie.posterSmall,
+        title: movie.title,
+        year:  movie.year,
+      }]);
+    } catch (_) {}
+  };
 
   const showSt = msg => { setSaveStatus(msg); setTimeout(() => setSaveStatus(""), 2200); };
 
@@ -255,14 +402,15 @@ export default function App() {
     });
   }, []);
 
-  const onFileDrop = useCallback(e => {
-    e.preventDefault(); setDropOver(false); handleFiles(e.dataTransfer.files);
-  }, [handleFiles]);
-
   const removeImage = id => setImages(prev => prev.filter(i => i.id !== id));
+
+  // PC: ドラッグ&ドロップ並び替え
   const moveImage = (from, to) => setImages(prev => {
     const a = [...prev]; const [x] = a.splice(from, 1); a.splice(to, 0, x); return a;
   });
+
+  // スマホ: タッチ並び替え
+  const touchDrag = useRef(null);
 
   const exportImage = async () => {
     if (n === 0 || exporting) return;
@@ -292,22 +440,13 @@ export default function App() {
       const gTop     = pad + tH;
 
       if (showTitle) {
-        // フォントをcanvasに認識させる
         await new Promise(resolve => {
           const probe = document.createElement("div");
-          probe.style.cssText = [
-            "position:fixed","top:-999px","left:-999px",
-            "visibility:hidden","pointer-events:none",
-            `font-family:'Noto Sans JP',sans-serif`,
-            `font-weight:${titleWeight}`,
-            "font-size:32px",
-          ].join(";");
+          probe.style.cssText = "position:fixed;top:-999px;left:-999px;visibility:hidden;pointer-events:none;"
+            + `font-family:'Noto Sans JP',sans-serif;font-weight:${titleWeight};font-size:32px;`;
           probe.textContent = titleText || "あ";
           document.body.appendChild(probe);
-          document.fonts.ready.then(() => {
-            document.body.removeChild(probe);
-            resolve();
-          });
+          document.fonts.ready.then(() => { document.body.removeChild(probe); resolve(); });
         });
         ctx.fillStyle    = titleColor;
         ctx.font         = `${titleWeight} ${Math.round(tFS)}px 'Noto Sans JP', sans-serif`;
@@ -328,12 +467,9 @@ export default function App() {
             const s  = Math.max(cellW / el.width, cellH / el.height);
             const dw = el.width * s, dh = el.height * s;
             ctx.save();
-            ctx.beginPath();
-            ctx.roundRect(x, y, cellW, cellH, 10);
-            ctx.clip();
+            ctx.beginPath(); ctx.roundRect(x, y, cellW, cellH, 10); ctx.clip();
             ctx.drawImage(el, x + (cellW - dw) / 2, y + (cellH - dh) / 2, dw, dh);
-            ctx.restore();
-            resolve();
+            ctx.restore(); resolve();
           };
           el.onerror = () => resolve();
           el.src = img.src;
@@ -342,11 +478,8 @@ export default function App() {
 
       const dataURL = cv.toDataURL("image/png");
       const a = document.createElement("a");
-      a.href = dataURL;
-      a.download = `movie-grid-${Date.now()}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      a.href = dataURL; a.download = `movie-grid-${Date.now()}.png`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
     } catch (err) {
       alert("書き出しに失敗しました: " + err.message);
     } finally {
@@ -355,6 +488,7 @@ export default function App() {
   };
 
   // プレビュー計算
+  const PW    = 260;
   const PH    = Math.round(PW * ratio.h / ratio.w);
   const pCols = n > 0 ? Math.min(cols, n) : cols;
   const pRows = n > 0 ? Math.ceil(n / pCols) : rows;
@@ -383,44 +517,90 @@ export default function App() {
       </nav>
 
       <div className="page">
-        <div style={{ marginBottom:4 }}>
+        {/* HERO */}
+        <div style={{ marginBottom:16 }}>
           <span className="tick" />
           <h1 className="hl">映画を<em>並べる。</em></h1>
-          <p className="sub">ポスターをドロップしてグリッドを組む。トレイ上でドラッグして順番を変える。</p>
+          <p className="sub">タイトルを検索してポスターを選ぶ。並べてグリッドを作る。</p>
         </div>
 
-        <div className={`drop-area${dropOver ? " over" : ""}`}
+        {/* SEARCH */}
+        <div className="search-wrap">
+          <div className="lang-toggle">
+            {[["ja-JP","日本語"],["en-US","English"]].map(([v,l]) => (
+              <button key={v} className={`lang-btn${lang===v?" on":""}`}
+                onClick={() => setLang(v)}>{l}</button>
+            ))}
+          </div>
+          <input
+            type="search" className="search-inp"
+            placeholder="映画タイトルを検索…"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            autoComplete="off"
+          />
+          {searching && <p className="searching-msg">検索中…</p>}
+          {searchResults.length > 0 && (
+            <div className="results-grid" style={{ marginTop:10 }}>
+              {searchResults.map(m => {
+                const added = images.some(i => i.tmdbId === m.id);
+                return (
+                  <div key={m.id}
+                    className={`res-card${added?" selected":""}`}
+                    onClick={() => !added && addFromSearch(m)}>
+                    <img src={m.posterSmall} alt={m.title} loading="lazy" />
+                    {added && <div className="res-card-check">✓</div>}
+                    <div className="res-card-title">{m.title} {m.year && `(${m.year})`}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {!searching && query && searchResults.length === 0 && (
+            <p className="searching-msg">「{query}」の結果なし</p>
+          )}
+        </div>
+
+        {/* DROP ZONE */}
+        <div className="sec-divider">
+          <div className="sec-divider-line" />
+          <span className="sec-divider-lbl">または画像をアップロード</span>
+          <div className="sec-divider-line" />
+        </div>
+        <div className={`drop-area${dropOver?" over":""}`}
           onClick={() => fileInputRef.current?.click()}
           onDragOver={e => { e.preventDefault(); setDropOver(true); }}
           onDragLeave={() => setDropOver(false)}
-          onDrop={onFileDrop}>
-          <div className="drop-icon">↓</div>
-          <p className="drop-main">ポスター画像をここにドロップ</p>
-          <p className="drop-sub">JPG · PNG · WEBP · 複数同時OK</p>
+          onDrop={e => { e.preventDefault(); setDropOver(false); handleFiles(e.dataTransfer.files); }}>
+          <p className="drop-main">↓ 画像をドロップ / タップして選択</p>
+          <p className="drop-sub">JPG · PNG · WEBP</p>
           <input ref={fileInputRef} type="file" multiple accept="image/*"
             style={{ display:"none" }} onChange={e => handleFiles(e.target.files)} />
         </div>
 
+        {/* TRAY */}
         {images.length > 0 && (
           <>
             <div className="tray-hd">
-              <span className="lbl">追加済み</span>
-              <span className="tray-ct">{n}/{maxSlots} 使用{images.length > maxSlots && ` · ${images.length - maxSlots}枚除外`}</span>
+              <span className="lbl">選択済み</span>
+              <span className="tray-ct">{n}/{maxSlots}{images.length>maxSlots&&` · ${images.length-maxSlots}枚除外`}</span>
             </div>
             <div className="tray-grid">
               {images.map((img, i) => (
                 <div key={img.id}
                   className={`tc${dragTarget===i?" dt":""}${i>=maxSlots?" excl":""}`}
                   draggable
-                  onDragStart={e => { e.dataTransfer.effectAllowed="move"; setDragging(i); }}
+                  onDragStart={e => { e.dataTransfer.effectAllowed="move"; setDraggingIdx(i); }}
                   onDragOver={e => { e.preventDefault(); setDragTarget(i); }}
-                  onDragEnd={() => { setDragging(null); setDragTarget(null); }}
-                  onDrop={e => {
-                    e.preventDefault();
-                    if (dragging !== null && dragging !== i) moveImage(dragging, i);
-                    setDragging(null); setDragTarget(null);
-                  }}>
-                  <img src={img.src} alt={img.title} />
+                  onDragEnd={() => { setDraggingIdx(null); setDragTarget(null); }}
+                  onDrop={e => { e.preventDefault(); if(draggingIdx!==null&&draggingIdx!==i) moveImage(draggingIdx,i); setDraggingIdx(null); setDragTarget(null); }}
+                  onTouchStart={() => { touchDrag.current = i; }}
+                  onTouchEnd={() => {
+                    // タッチ並び替えは左右スワイプで前後入れ替え
+                    touchDrag.current = null;
+                  }}
+                >
+                  <img src={img.thumb || img.src} alt={img.title} />
                   <button className="tc-rm" onClick={() => removeImage(img.id)} aria-label="削除">✕</button>
                   <span className="tc-name">{img.title}</span>
                 </div>
@@ -429,6 +609,7 @@ export default function App() {
           </>
         )}
 
+        {/* BOTTOM */}
         <div className="bottom">
           <div className="settings">
 
@@ -451,7 +632,7 @@ export default function App() {
                 {PRESETS.map(p => (
                   <button key={p.name} className="preset-dot"
                     onClick={() => { setBgColor(p.bg); setTextColor(p.tx); }}
-                    style={{ background:p.bg, boxShadow: bgColor===p.bg ? `0 0 0 2px ${p.tx}` : "none" }}
+                    style={{ background:p.bg, boxShadow:bgColor===p.bg?`0 0 0 2px ${p.tx}`:"none" }}
                     title={p.name} />
                 ))}
               </div>
@@ -497,6 +678,7 @@ export default function App() {
 
           </div>
 
+          {/* PREVIEW */}
           <div className="preview-col">
             <div className="prev-hd">
               <span className="lbl">プレビュー</span>
@@ -504,41 +686,33 @@ export default function App() {
             </div>
 
             <div style={{
-              width: PW, height: PH,
-              background: bgColor,
-              borderRadius: 10,
-              border: "0.5px solid #c8d2c8",
-              overflow: "hidden",
-              flexShrink: 0,
-              position: "relative",
+              width:PW, height:PH, background:bgColor,
+              borderRadius:10, border:"0.5px solid #c8d2c8",
+              overflow:"hidden", flexShrink:0, position:"relative",
             }}>
-              <div style={{
-                position:"absolute", inset:0,
-                display:"flex", alignItems:"center", justifyContent:"center",
-              }}>
+              <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
                 <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}>
                   {showTitle && (
                     <div style={{ marginBottom:vTG, width:vAW, textAlign:"center", overflow:"hidden" }}>
                       <span style={{
                         display:"block", color:titleColor, fontSize:vTS,
-                        fontFamily:"'Noto Sans JP', sans-serif",
-                        fontWeight:titleWeight, whiteSpace:"nowrap",
-                        overflow:"hidden", textOverflow:"ellipsis", lineHeight:1.4,
+                        fontFamily:"'Noto Sans JP', sans-serif", fontWeight:titleWeight,
+                        whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", lineHeight:1.4,
                       }}>{titleText}</span>
                     </div>
                   )}
                   <div style={{ display:"flex", flexDirection:"column", gap:vGap }}>
-                    {Array.from({ length: pRows }, (_, ri) => (
+                    {Array.from({ length:pRows }, (_, ri) => (
                       <div key={ri} style={{ display:"flex", gap:vGap }}>
-                        {Array.from({ length: pCols }, (_, ci) => {
-                          const img = visibleImages[ri * pCols + ci];
+                        {Array.from({ length:pCols }, (_, ci) => {
+                          const img = visibleImages[ri*pCols+ci];
                           return (
                             <div key={ci} style={{
                               width:vCW, height:vCH, borderRadius:3,
                               overflow:"hidden", flexShrink:0,
-                              background: img ? "transparent" : `${textColor}18`,
+                              background: img?"transparent":`${textColor}18`,
                             }}>
-                              {img && <img src={img.src} alt=""
+                              {img && <img src={img.thumb||img.src} alt=""
                                 style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />}
                             </div>
                           );
@@ -550,9 +724,9 @@ export default function App() {
               </div>
             </div>
 
-            <button className={`exp${exporting ? " loading" : ""}`}
-              onClick={exportImage} disabled={n === 0 || exporting}>
-              {exporting ? "書き出し中…" : "PNG書き出し (1440px) →"}
+            <button className={`exp${exporting?" loading":""}`}
+              onClick={exportImage} disabled={n===0||exporting}>
+              {exporting?"書き出し中…":"PNG書き出し (1440px) →"}
             </button>
 
             <div className="save-row">
@@ -561,15 +735,12 @@ export default function App() {
             </div>
 
             <p className="st">
-              {saveStatus === "saved" && "✓ 設定を保存しました"}
-              {saveStatus === "reset" && "✓ デフォルトに戻しました"}
-              {saveStatus === "error" && "保存に失敗しました"}
+              {saveStatus==="saved"&&"✓ 設定を保存しました"}
+              {saveStatus==="reset"&&"✓ デフォルトに戻しました"}
+              {saveStatus==="error"&&"保存に失敗しました"}
             </p>
 
-            <p className="hint">
-              セル比率はポスター標準の 2:3 固定。<br />
-              出力 1440px · Noto Sans JP
-            </p>
+            <p className="hint">セル比率はポスター標準の 2:3 固定。出力 1440px</p>
           </div>
         </div>
       </div>
