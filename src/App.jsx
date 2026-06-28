@@ -182,13 +182,14 @@ const css = `
   body{font-family:var(--body);background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;}
 
   .visitor{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--g400);font-weight:500;
-    padding:6px 12px;background:var(--g100);border-radius:100px;margin-bottom:24px;}
+    padding:6px 12px;background:var(--g100);border-radius:100px;
+    position:absolute;top:24px;right:24px;z-index:5;}
   .visitor-num{font-family:var(--disp);font-size:13px;font-weight:600;color:var(--ink);}
 
   .page{padding:0 0 120px;max-width:1320px;margin:0 auto;}
 
   /* HERO */
-  .hero{padding:40px 24px 36px;}
+  .hero{padding:32px 24px 36px;position:relative;}
   .hero-h1{font-family:var(--disp);font-weight:500;font-size:clamp(40px,8vw,84px);line-height:0.92;
     letter-spacing:-0.04em;color:var(--ink);}
   .hero-h1 .out{color:transparent;-webkit-text-stroke:1.5px var(--ink);}
