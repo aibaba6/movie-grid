@@ -108,6 +108,7 @@ const PALETTES = [
 const LAYOUT_MODES = [
   { id:"grid",  name:"均等グリッド", desc:"すべて同じ大きさ" },
   { id:"best3", name:"ベスト3",      desc:"上段に大きく3枚" },
+  { id:"top1",  name:"TOP1",        desc:"1枚を主役に大きく" },
 ];
 
 const STORAGE_KEY = "movie-grid-v4";
@@ -121,6 +122,40 @@ const DEFAULT = {
   titleFont:"'Space Grotesk', sans-serif", titleTransform:"none", titleLetter:"-0.02em",
 };
 const DEFAULT_RATIO = RATIOS.find(r => r.id === DEFAULT.ratioId) || RATIOS[3];
+
+// グリッド構成から最適なキャンバス比率(RATIOSの中から最も近いもの)を返す
+function bestRatioFor(mode, cols, rows, gapRatio, padRatio, titleRatio) {
+  const AR = 2 / 3; // ポスター 2:3
+  // マス幅を1とした時のグリッド全体の幅・高さ（相対値）
+  let gridW, gridH;
+  const cw = 1, ch = cw / AR; // 1マス: 幅1, 高さ1.5
+  if (mode === "best3") {
+    // 上段3枚 + 下段cols×rows（上段も下段も同じマス基準で近似）
+    gridW = Math.max(3, cols) * cw + gapRatio * (Math.max(3, cols) - 1);
+    gridH = ch + gapRatio + ch * rows + gapRatio * (rows - 1);
+  } else if (mode === "top1") {
+    // 大1枚(下段マスの1.3倍) + 下段cols×rows
+    const fullW = cols * cw + gapRatio * (cols - 1);
+    const heroW = Math.min(fullW, cw * 1.3), heroH = heroW / AR;
+    gridW = fullW;
+    gridH = heroH + gapRatio * 1.4 + ch * rows + gapRatio * (rows - 1);
+  } else {
+    gridW = cols * cw + gapRatio * (cols - 1);
+    gridH = rows * ch + gapRatio * (rows - 1);
+  }
+  // 余白とタイトル分を加える
+  const totalW = gridW + padRatio * 2;
+  const totalH = gridH + padRatio * 2 + titleRatio;
+  const target = totalW / totalH; // 目標の w/h
+  // RATIOSから最も近い比率を選ぶ
+  let best = RATIOS[0], bestDiff = Infinity;
+  for (const r of RATIOS) {
+    const rr = r.w / r.h;
+    const diff = Math.abs(Math.log(rr) - Math.log(target));
+    if (diff < bestDiff) { bestDiff = diff; best = r; }
+  }
+  return best;
+}
 
 function useDebounce(v, d) {
   const [val, setVal] = useState(v);
@@ -300,9 +335,12 @@ const css = `
     font-weight:600;color:var(--ink);letter-spacing:-0.01em;}
   .acc-arrow{transition:transform .2s;font-size:10px;}
   .acc-arrow.open{transform:rotate(180deg);}
-  .acc-body{padding:6px 18px 22px;display:flex;flex-direction:column;gap:20px;border-top:var(--bd);}
-  .sect-t{font-family:var(--disp);font-size:11px;color:var(--g500);letter-spacing:0.1em;text-transform:uppercase;
-    margin-bottom:10px;font-weight:600;}
+  .acc-body{padding:6px 18px 22px;display:flex;flex-direction:column;gap:0;border-top:var(--bd);}
+  .acc-body > div{padding:20px 0;}
+  .acc-body > div:first-child{padding-top:14px;}
+  .acc-body > div + div{border-top:var(--bd);}
+  .sect-t{font-family:var(--disp);font-size:14px;color:var(--ink);letter-spacing:0.04em;text-transform:uppercase;
+    margin-bottom:12px;font-weight:700;}
 
   /* EXPORT */
   .exp{width:100%;padding:18px 0;border:none;border-radius:var(--r-pill);background:var(--ink);color:var(--paper);
@@ -322,7 +360,6 @@ const css = `
   .prev-hd{display:flex;justify-content:space-between;align-items:baseline;}
   .prev-ct{font-size:11px;color:var(--g400);font-weight:500;}
   .hint{font-size:11px;color:var(--g400);line-height:1.6;}
-  .comment-ph{font-family:var(--disp);font-size:10px;color:var(--g400);text-align:center;line-height:1.3;font-weight:500;}
 `;
 
 function SliderRow({ label, value, min, max, step, onChange, unit = "" }) {
@@ -355,6 +392,7 @@ export default function App() {
   const [cols, setCols]               = useState(DEFAULT.cols);
   const [rows, setRows]               = useState(DEFAULT.rows);
   const [ratio, setRatio]             = useState(DEFAULT_RATIO);
+  const [autoRatio, setAutoRatio]     = useState(true);
   const [gap, setGap]                 = useState(DEFAULT.gap);
   const [padding, setPadding]         = useState(DEFAULT.padding);
   const [bgColor, setBgColor]         = useState(DEFAULT.bgColor);
@@ -371,8 +409,6 @@ export default function App() {
   const [jpSerif, setJpSerif]         = useState(false);
   const [titleTransform, setTitleTransform] = useState(DEFAULT.titleTransform);
   const [titleLetter, setTitleLetter] = useState(DEFAULT.titleLetter);
-  const [comments, setComments]       = useState({});
-  const [editingSlot, setEditingSlot] = useState(null);
   const [showDetail, setShowDetail]   = useState(false);
   const [dropOver, setDropOver]       = useState(false);
   const [draggingIdx, setDraggingIdx] = useState(null);
@@ -391,7 +427,9 @@ export default function App() {
   const previewBoxRef = useRef(null);
   const dragState     = useRef({ active:false, current:null, scope:null });
 
-  const totalSlots    = layoutMode === "best3" ? 3 + cols * rows : cols * rows;
+  const totalSlots    = layoutMode === "best3" ? 3 + cols * rows
+                      : layoutMode === "top1"  ? 1 + cols * rows
+                      : cols * rows;
   const usableImages  = images.slice(0, totalSlots);
   const n             = usableImages.length;
 
@@ -412,6 +450,7 @@ export default function App() {
       if (s.cols)        setCols(s.cols);
       if (s.rows)        setRows(s.rows);
       if (s.ratioId)     setRatio(RATIOS.find(r => r.id === s.ratioId) || DEFAULT_RATIO);
+      if (s.autoRatio != null) setAutoRatio(s.autoRatio);
       if (s.gap != null) setGap(s.gap);
       if (s.padding != null) setPadding(s.padding);
       if (s.bgColor)     setBgColor(s.bgColor);
@@ -428,9 +467,32 @@ export default function App() {
       if (s.jpSerif != null) setJpSerif(s.jpSerif);
       if (s.titleTransform) setTitleTransform(s.titleTransform);
       if (s.titleLetter) setTitleLetter(s.titleLetter);
-      if (s.comments)    setComments(s.comments);
     } catch (_) {}
   }, []);
+
+  // ── autoRatio: グリッド数から最適比率を自動適用 ──
+  useEffect(() => {
+    if (!autoRatio) return;
+    // gap/paddingをマス幅基準の相対値に。マス幅の実寸は可変なので、
+    // 600px幅キャンバスで cols 並ぶときの1マス幅を基準に近似
+    const approxCellW = (600 - padding * 2 - gap * (cols - 1)) / Math.max(1, cols);
+    const gapR = approxCellW > 0 ? gap / approxCellW : 0.04;
+    const padR = approxCellW > 0 ? padding / approxCellW : 0.08;
+    const titleR = showTitle ? (titleSize * 1.5 + gap) / Math.max(1, approxCellW) : 0;
+    const best = bestRatioFor(layoutMode, cols, rows, gapR, padR, titleR);
+    setRatio(prev => prev.id === best.id ? prev : best);
+  }, [autoRatio, layoutMode, cols, rows, gap, padding, showTitle, titleSize]);
+
+  // ── 枚数クイック選択（TOP N をきれいな行×列に）──
+  const COUNT_PRESETS = [
+    { n:3,  mode:"grid",  cols:3, rows:1, label:"TOP3" },
+    { n:5,  mode:"top1",  cols:2, rows:2, label:"TOP5" },
+    { n:6,  mode:"grid",  cols:3, rows:2, label:"TOP6" },
+    { n:9,  mode:"grid",  cols:3, rows:3, label:"TOP9" },
+    { n:10, mode:"top1",  cols:3, rows:3, label:"TOP10" },
+    { n:12, mode:"grid",  cols:3, rows:4, label:"TOP12" },
+  ];
+  const applyCount = (p) => { setLayoutMode(p.mode); setCols(p.cols); setRows(p.rows); };
 
   const applyFormat = (f) => {
     setFormatId(f.id);
@@ -462,9 +524,9 @@ export default function App() {
   const saveSettings = () => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        formatId, layoutMode, cols, rows, ratioId:ratio.id, gap, padding,
+        formatId, layoutMode, cols, rows, ratioId:ratio.id, autoRatio, gap, padding,
         bgColor, bg2Color, bg3Color, bgType, textColor, showTitle, titleText, titleSize, titleWeight, titleColor,
-        titleFont, titleTransform, titleLetter, jpSerif, comments,
+        titleFont, titleTransform, titleLetter, jpSerif,
       }));
       showSt("SAVED");
     } catch (_) { showSt("ERROR"); }
@@ -473,13 +535,12 @@ export default function App() {
     try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
     const d = DEFAULT;
     setFormatId(d.formatId); setLayoutMode(d.layoutMode);
-    setCols(d.cols); setRows(d.rows); setRatio(DEFAULT_RATIO);
+    setCols(d.cols); setRows(d.rows); setRatio(DEFAULT_RATIO); setAutoRatio(true);
     setGap(d.gap); setPadding(d.padding);
     setBgColor(d.bgColor); setBg2Color(d.bg2Color); setBg3Color(d.bg3Color); setBgType(d.bgType); setTextColor(d.textColor);
     setShowTitle(d.showTitle); setTitleText(d.titleText);
     setTitleSize(d.titleSize); setTitleWeight(d.titleWeight); setTitleColor(d.titleColor);
     setTitleFont(d.titleFont); setTitleTransform(d.titleTransform); setTitleLetter(d.titleLetter); setJpSerif(false);
-    setComments({});
     showSt("RESET");
   };
 
@@ -569,23 +630,78 @@ export default function App() {
   function layoutRects(W, H, pad, g, tH) {
     const availW = W - pad * 2;
     const availH = H - pad * 2 - tH;
+    const AR = 2 / 3; // ポスター比率 w:h = 2:3
     const rects = [];
     if (layoutMode === "best3") {
-      const topH = 0.46;
-      const topAreaH = (availH - g) * topH;
-      const botAreaH = (availH - g) * (1 - topH);
+      // 上段3枚 + 下段グリッド。各マスを2:3に固定し、全体を中央配置
+      // 上段マス幅: 横3枚で availW を分割
       const topCellW = (availW - g * 2) / 3;
-      for (let i = 0; i < 3; i++) rects.push({ x: pad + i * (topCellW + g), y: pad + tH, w: topCellW, h: topAreaH, slot: i });
+      const topCellH = topCellW / AR;
+      // 下段マス: cols×rows
       const botCellW = (availW - g * (cols - 1)) / cols;
-      const botCellH = (botAreaH - g * (rows - 1)) / rows;
-      const botTop = pad + tH + topAreaH + g;
+      const botCellH = botCellW / AR;
+      // 全体の高さ
+      const totalH = topCellH + g + botCellH * rows + g * (rows - 1);
+      // 高さが収まらなければ全体をスケールダウン
+      const scale = totalH > availH ? availH / totalH : 1;
+      const tcw = topCellW * scale, tch = topCellH * scale;
+      const bcw = botCellW * scale, bch = botCellH * scale;
+      const gg = g * scale;
+      const usedH = tch + gg + bch * rows + gg * (rows - 1);
+      const offY = pad + tH + (availH - usedH) / 2;
+      // 上段（3枚を中央寄せ）
+      const topRowW = tcw * 3 + gg * 2;
+      const topOffX = pad + (availW - topRowW) / 2;
+      for (let i = 0; i < 3; i++)
+        rects.push({ x: topOffX + i * (tcw + gg), y: offY, w: tcw, h: tch, slot: i });
+      // 下段
+      const botRowW = bcw * cols + gg * (cols - 1);
+      const botOffX = pad + (availW - botRowW) / 2;
+      const botTop = offY + tch + gg;
       for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++)
-        rects.push({ x: pad + c * (botCellW + g), y: botTop + r * (botCellH + g), w: botCellW, h: botCellH, slot: 3 + r * cols + c });
+        rects.push({ x: botOffX + c * (bcw + gg), y: botTop + r * (bch + gg), w: bcw, h: bch, slot: 3 + r * cols + c });
+    } else if (layoutMode === "top1") {
+      // TOP1：大きな1枚を中央上に、その下にcols×rowsの小グリッド
+      // 大1枚は下段マスの約1.3倍（他より少し大きい程度）。2:3固定
+      const botCellW = (availW - g * (cols - 1)) / cols;
+      const botCellH = botCellW / AR;
+      const heroW = Math.min(availW, botCellW * 1.3);
+      const heroH = heroW / AR;
+      const totalH = heroH + g * 1.4 + botCellH * rows + g * (rows - 1);
+      const scale = totalH > availH ? availH / totalH : 1;
+      const hw = heroW * scale, hh = heroH * scale;
+      const bcw = botCellW * scale, bch = botCellH * scale;
+      const gg = g * scale;
+      const usedH = hh + gg * 1.4 + bch * rows + gg * (rows - 1);
+      const offY = pad + tH + (availH - usedH) / 2;
+      // 大1枚（中央）
+      rects.push({ x: pad + (availW - hw) / 2, y: offY, w: hw, h: hh, slot: 0 });
+      // 下段グリッド
+      const botRowW = bcw * cols + gg * (cols - 1);
+      const botOffX = pad + (availW - botRowW) / 2;
+      const botTop = offY + hh + gg * 1.4;
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++)
+        rects.push({ x: botOffX + c * (bcw + gg), y: botTop + r * (bch + gg), w: bcw, h: bch, slot: 1 + r * cols + c });
     } else {
-      const cellW = (availW - g * (cols - 1)) / cols;
-      const cellH = (availH - g * (rows - 1)) / rows;
+      // 均等グリッド：各マスを2:3に固定し、グリッド全体を中央配置
+      // 幅基準のマスサイズ
+      const cellWByW = (availW - g * (cols - 1)) / cols;
+      const cellHByW = cellWByW / AR;
+      const gridHByW = cellHByW * rows + g * (rows - 1);
+      // 高さ基準のマスサイズ
+      const cellHByH = (availH - g * (rows - 1)) / rows;
+      const cellWByH = cellHByH * AR;
+      const gridWByH = cellWByH * cols + g * (cols - 1);
+      // 収まる方を採用
+      let cellW, cellH;
+      if (gridHByW <= availH) { cellW = cellWByW; cellH = cellHByW; }
+      else { cellW = cellWByH; cellH = cellHByH; }
+      const gridW = cellW * cols + g * (cols - 1);
+      const gridH = cellH * rows + g * (rows - 1);
+      const offX = pad + (availW - gridW) / 2;
+      const offY = pad + tH + (availH - gridH) / 2;
       for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++)
-        rects.push({ x: pad + c * (cellW + g), y: pad + tH + r * (cellH + g), w: cellW, h: cellH, slot: r * cols + c });
+        rects.push({ x: offX + c * (cellW + g), y: offY + r * (cellH + g), w: cellW, h: cellH, slot: r * cols + c });
     }
     return rects;
   }
@@ -656,7 +772,7 @@ export default function App() {
   }
 
   const exportImage = async () => {
-    if (n === 0 && Object.keys(comments).length === 0) return;
+    if (n === 0) return;
     if (exporting) return;
     setExporting(true);
     try {
@@ -704,7 +820,6 @@ export default function App() {
       const rects = layoutRects(cW, cH, pad, g, tH);
       for (const rect of rects) {
         const img = usableImages[rect.slot];
-        const comment = comments[rect.slot];
         if (img) {
           await new Promise(resolve => {
             const el = new Image();
@@ -718,22 +833,6 @@ export default function App() {
             el.onerror = () => resolve();
             el.src = img.src;
           });
-        } else if (comment) {
-          ctx.save();
-          ctx.fillStyle = textColor;
-          const fs = Math.min(rect.w, rect.h) * 0.14;
-          ctx.font = `500 ${Math.round(fs)}px ${effectiveFont}`;
-          ctx.textAlign = "center"; ctx.textBaseline = "middle";
-          const maxW = rect.w * 0.86;
-          let line = "", lines = [];
-          for (const ch of comment) {
-            if (ctx.measureText(line + ch).width > maxW && line) { lines.push(line); line = ch; } else line += ch;
-          }
-          if (line) lines.push(line);
-          const lineH = fs * 1.35;
-          const startY = rect.y + rect.h / 2 - (lines.length - 1) * lineH / 2;
-          lines.forEach((ln, i) => ctx.fillText(ln, rect.x + rect.w / 2, startY + i * lineH));
-          ctx.restore();
         }
       }
 
@@ -783,32 +882,25 @@ export default function App() {
                   )}
                   {previewRects.map((rect) => {
                     const img = usableImages[rect.slot];
-                    const comment = comments[rect.slot];
                     return (
                       <div key={rect.slot}
                         data-idx={img ? rect.slot : undefined}
                         data-scope={img ? "preview" : undefined}
                         onPointerDown={img ? onPointerDown(rect.slot) : undefined}
-                        onClick={!img ? () => setEditingSlot(rect.slot) : undefined}
                         style={{ position:"absolute", left:rect.x, top:rect.y, width:rect.w, height:rect.h,
                           overflow:"hidden", borderRadius:Math.max(4, Math.min(rect.w,rect.h)*0.06),
-                          background: img ? "transparent" : (comment ? "transparent" : `${textColor}0f`),
-                          cursor: img ? "grab" : "text", touchAction: img ? "none" : "auto",
+                          background: img ? "transparent" : `${textColor}0d`,
+                          cursor: img ? "grab" : "default", touchAction: img ? "none" : "auto",
                           opacity: draggingIdx===rect.slot ? 0.7 : 1,
                           outline: draggingIdx===rect.slot ? "2px solid var(--accent)" : "none",
                           display:"flex", alignItems:"center", justifyContent:"center" }}>
-                        {img
-                          ? <img src={img.thumb||img.src} alt="" draggable={false} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", pointerEvents:"none" }} />
-                          : comment
-                            ? <span style={{ color:textColor, fontSize:Math.max(9, Math.min(rect.w,rect.h)*0.13), fontFamily:effectiveFont, fontWeight:500, padding:6, textAlign:"center", lineHeight:1.3, wordBreak:"break-word", width:"100%" }}>{comment}</span>
-                            : <span className="comment-ph">＋<br/>TEXT</span>
-                        }
+                        {img && <img src={img.thumb||img.src} alt="" draggable={false} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", pointerEvents:"none" }} />}
                       </div>
                     );
                   })}
                 </div>
               </div>
-              <button className="exp" onClick={exportImage} disabled={(n===0 && Object.keys(comments).length===0) || exporting}>
+              <button className="exp" onClick={exportImage} disabled={n===0 || exporting}>
                 {exporting ? "EXPORTING…" : "EXPORT PNG · 1440px"}
               </button>
               <div className="save-row">
@@ -891,19 +983,28 @@ export default function App() {
                 {/* 4 LAYOUT */}
                 <div className="step">
                   <div className="step-hd"><span className="step-n">04</span><span className="step-t">Layout</span></div>
-                  <div className="mode-row">
+                  <div className="mode-row" style={{ gridTemplateColumns:"1fr 1fr 1fr" }}>
                     {LAYOUT_MODES.map(m => (
                       <button key={m.id} className={`mode-card${layoutMode===m.id?" on":""}`} onClick={() => setLayoutMode(m.id)}>
                         <div className="mode-name">{m.name}</div><div className="mode-desc">{m.desc}</div>
                       </button>
                     ))}
                   </div>
+                  <p className="sect-t" style={{ marginTop:18, marginBottom:8 }}>枚数で選ぶ</p>
+                  <div className="chips">
+                    {COUNT_PRESETS.map(p => {
+                      const on = layoutMode===p.mode && cols===p.cols && rows===p.rows;
+                      return <button key={p.label} className={`chip${on?" on":""}`} onClick={() => applyCount(p)}>{p.label}</button>;
+                    })}
+                  </div>
                   <div style={{ display:"flex", flexDirection:"column", gap:12, marginTop:16 }}>
-                    <SliderRow label={layoutMode==="best3"?"下段の列":"列"} value={cols} min={1} max={8} step={1} onChange={setCols} />
-                    <SliderRow label={layoutMode==="best3"?"下段の行":"行"} value={rows} min={1} max={8} step={1} onChange={setRows} />
+                    <SliderRow label={layoutMode==="grid"?"列":"下段の列"} value={cols} min={1} max={8} step={1} onChange={setCols} />
+                    <SliderRow label={layoutMode==="grid"?"行":"下段の行"} value={rows} min={1} max={8} step={1} onChange={setRows} />
                   </div>
                   <p className="hint" style={{ marginTop:8 }}>
-                    {layoutMode==="best3" ? `大3枚 + 小${cols*rows}枚 = 計${totalSlots}枚` : `最大 ${totalSlots} 枚`}
+                    {layoutMode==="best3" ? `大3枚 + 小${cols*rows}枚 = 計${totalSlots}枚`
+                      : layoutMode==="top1" ? `大1枚 + 小${cols*rows}枚 = 計${totalSlots}枚`
+                      : `最大 ${totalSlots} 枚`}
                   </p>
                 </div>
 
@@ -946,7 +1047,7 @@ export default function App() {
                           <ColorInput label="下地" value={textColor} onChange={setTextColor} />
                           <ColorInput label="文字" value={titleColor} onChange={setTitleColor} />
                         </div>
-                        <p className="sect-t" style={{ marginTop:16 }}>Texture</p>
+                        <p className="sect-t" style={{ marginTop:20, paddingTop:20, borderTop:"var(--bd)" }}>Texture</p>
                         <div className="chips">
                           {[["solid","単色"],["gradient","グラデ"],["mesh","メッシュ"],["film","フィルム"],["noise","ノイズ"]].map(([v,l]) => (
                             <button key={v} className={`chip${bgType===v?" on":""}`} onClick={() => setBgType(v)}>{l}</button>
@@ -954,10 +1055,12 @@ export default function App() {
                         </div>
                       </div>
                       <div>
-                        <p className="sect-t">Ratio</p>
+                        <p className="sect-t">Ratio {autoRatio && <span style={{ color:"var(--accent)", fontSize:10 }}>· AUTO</span>}</p>
                         <div className="chips">
-                          {RATIOS.map(r => <button key={r.id} className={`chip${ratio.id===r.id?" on":""}`} onClick={() => setRatio(r)}>{r.label}</button>)}
+                          <button className={`chip${autoRatio?" on":""}`} onClick={() => setAutoRatio(true)}>AUTO</button>
+                          {RATIOS.map(r => <button key={r.id} className={`chip${(!autoRatio && ratio.id===r.id)?" on":""}`} onClick={() => { setAutoRatio(false); setRatio(r); }}>{r.label}</button>)}
                         </div>
+                        {autoRatio && <p className="hint" style={{ marginTop:8 }}>グリッド数に合わせて自動調整中（現在 {ratio.label}）</p>}
                       </div>
                       <div>
                         <p className="sect-t">Spacing</p>
@@ -973,7 +1076,7 @@ export default function App() {
                             <SliderRow label="サイズ" value={titleSize} min={10} max={72} step={1} onChange={setTitleSize} unit="px" />
                             <SliderRow label="ウェイト" value={titleWeight} min={300} max={700} step={100} onChange={setTitleWeight} />
                           </div>
-                          <p className="sect-t" style={{ marginTop:16, marginBottom:8 }}>日本語書体</p>
+                          <p className="sect-t" style={{ marginTop:20, paddingTop:20, borderTop:"var(--bd)", marginBottom:8 }}>日本語書体</p>
                           <div className="chips">
                             <button className={`chip${!jpSerif?" on":""}`} onClick={() => setJpSerif(false)} style={{ fontFamily:"'Noto Sans JP', sans-serif" }}>ゴシック体</button>
                             <button className={`chip${jpSerif?" on":""}`} onClick={() => setJpSerif(true)} style={{ fontFamily:"'Noto Serif JP', serif" }}>明朝体</button>
@@ -994,7 +1097,6 @@ export default function App() {
                           <input ref={fileInputRef} type="file" multiple accept="image/*" style={{ display:"none" }} onChange={e => handleFiles(e.target.files)} />
                         </div>
                       </div>
-                      <p className="hint">空きマスをタップでコメント入力。</p>
                     </div>
                   )}
                 </div>
@@ -1004,23 +1106,6 @@ export default function App() {
         </div>
       </div>
 
-      {editingSlot !== null && (
-        <div onClick={() => setEditingSlot(null)} style={{ position:"fixed", inset:0, background:"rgba(10,10,10,0.6)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background:"#fff", padding:24, width:"100%", maxWidth:360, display:"flex", flexDirection:"column", gap:16, border:"1px solid #0a0a0a" }}>
-            <p style={{ fontFamily:"var(--disp)", fontSize:15, fontWeight:600, letterSpacing:"-0.01em" }}>Comment</p>
-            <textarea autoFocus value={comments[editingSlot] || ""}
-              onChange={e => setComments(prev => ({ ...prev, [editingSlot]: e.target.value }))}
-              placeholder="このマスに表示する文字…"
-              style={{ width:"100%", minHeight:90, padding:12, border:"1px solid #0a0a0a", fontSize:15, fontFamily:"var(--body)", resize:"vertical", outline:"none" }} />
-            <div style={{ display:"flex", gap:10 }}>
-              <button onClick={() => { setComments(prev => { const c={...prev}; delete c[editingSlot]; return c; }); setEditingSlot(null); }}
-                style={{ padding:"12px 16px", border:"1px solid #d4d4d8", background:"transparent", color:"#71717a", fontFamily:"var(--disp)", fontSize:12, fontWeight:500, cursor:"pointer" }}>DELETE</button>
-              <button onClick={() => setEditingSlot(null)}
-                style={{ flex:1, padding:"12px 0", border:"1px solid #0a0a0a", background:"#0a0a0a", color:"#fff", fontFamily:"var(--disp)", fontSize:13, fontWeight:600, cursor:"pointer" }}>DONE</button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
