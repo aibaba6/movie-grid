@@ -1,5 +1,4 @@
-node_modules
-dist
-.env
-.env.local
-.vercel
+.DS_Store
+選択項目から作成したフォルダ/
+node_modules/
+dist/
