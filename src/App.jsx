@@ -1086,7 +1086,6 @@ export default function App() {
                       ))}
                     </div>
                   )}
-                  </button>
                   <div style={{ display:"flex", flexDirection:"column", gap:12, marginTop:16 }}>
                     <SliderRow label={layoutMode==="grid"?"列":"下段の列"} value={cols} min={1} max={8} step={1} onChange={setCols} />
                     <SliderRow label={layoutMode==="grid"?"行":"下段の行"} value={rows} min={1} max={8} step={1} onChange={setRows} />
