@@ -374,7 +374,17 @@ const css = `
   .exp:active{transform:scale(0.98);}
   .exp:hover:not(:disabled){box-shadow:0 6px 24px rgba(232,255,0,0.4);}
   .exp:disabled{background:var(--g200);color:var(--g400);cursor:default;box-shadow:none;}
-  .save-row{display:flex;gap:10px;}
+  .share-row{display:flex;gap:10px;margin-top:10px;}
+  .share-btn{flex:1;padding:13px 0;border:var(--bd);border-radius:var(--r-pill);background:var(--paper);color:var(--ink);
+    font-family:var(--disp);font-size:12px;font-weight:600;cursor:pointer;transition:all .12s;
+    display:flex;align-items:center;justify-content:center;gap:7px;-webkit-tap-highlight-color:transparent;}
+  .share-btn:active{transform:scale(0.97);}
+  .share-btn:disabled{opacity:0.4;cursor:default;}
+  .share-btn.x:hover:not(:disabled){background:#000;color:#fff;border-color:#000;}
+  .share-btn.th:hover:not(:disabled){background:#000;color:#fff;border-color:#000;}
+  .share-ic{font-size:14px;font-weight:700;}
+  .share-note{font-size:10px;color:var(--g400);text-align:center;margin-top:8px;line-height:1.5;}
+  .save-row{display:flex;gap:10px;margin-top:12px;}
   .save-btn{flex:1;padding:13px 0;border:var(--bd);border-radius:var(--r-pill);background:var(--paper);color:var(--ink);
     font-family:var(--disp);font-size:12px;font-weight:500;cursor:pointer;transition:all .12s;}
   .save-btn:active{transform:scale(0.97);}
@@ -806,99 +816,130 @@ export default function App() {
     }
   }
 
+  // ── canvasにグリッドを描画してBlobを返す（export/share共通）──
+  const renderCanvasBlob = async () => {
+    const OUT = 1440;
+    const cW = OUT, cH = Math.round(OUT * ratio.h / ratio.w);
+    const cv = document.createElement("canvas");
+    cv.width = cW; cv.height = cH;
+    const ctx = cv.getContext("2d");
+    drawCanvasBg(ctx, cW, cH);
+    const SC = cW / 600;
+    const pad = padding * SC, g = gap * SC, tFS = titleSize * SC;
+    const tH = showTitle ? tFS * 1.5 + g : 0;
+
+    await new Promise(resolve => {
+      const probe = document.createElement("div");
+      probe.style.cssText = "position:fixed;top:-999px;left:-999px;visibility:hidden;"
+        + `font-family:${effectiveFont};font-weight:${titleWeight};font-size:32px;`;
+      probe.textContent = titleText || "A";
+      document.body.appendChild(probe);
+      document.fonts.ready.then(() => { document.body.removeChild(probe); resolve(); });
+    });
+
+    if (showTitle && titleText) {
+      ctx.fillStyle = titleColor;
+      ctx.font = `${titleWeight} ${Math.round(tFS)}px ${effectiveFont}`;
+      ctx.textBaseline = "alphabetic";
+      const disp = titleTransform === "uppercase" ? titleText.toUpperCase() : titleText;
+      ctx.save();
+      if (titleLetter && titleLetter !== "0") {
+        const ls = parseFloat(titleLetter) * tFS;
+        let total = 0;
+        for (const ch of disp) total += ctx.measureText(ch).width + ls;
+        total -= ls;
+        ctx.textAlign = "left";
+        let x = (cW - total) / 2;
+        for (const ch of disp) { ctx.fillText(ch, x, pad + tFS); x += ctx.measureText(ch).width + ls; }
+      } else {
+        ctx.textAlign = "center";
+        ctx.fillText(disp, cW / 2, pad + tFS, cW - pad * 2);
+      }
+      ctx.restore();
+    }
+
+    const rects = layoutRects(cW, cH, pad, g, tH);
+    for (const rect of rects) {
+      const img = usableImages[rect.slot];
+      if (img) {
+        await new Promise(resolve => {
+          const el = new Image();
+          el.onload = () => {
+            const s = Math.max(rect.w / el.width, rect.h / el.height);
+            const dw = el.width * s, dh = el.height * s;
+            ctx.save(); ctx.beginPath(); ctx.roundRect(rect.x, rect.y, rect.w, rect.h, tight ? 0 : Math.max(6, Math.min(rect.w,rect.h)*0.06)); ctx.clip();
+            ctx.drawImage(el, rect.x + (rect.w - dw) / 2, rect.y + (rect.h - dh) / 2, dw, dh);
+            ctx.restore(); resolve();
+          };
+          el.onerror = () => resolve();
+          el.src = img.src;
+        });
+      }
+    }
+
+    // ランキングバッジ（プリセット時のみ）
+    if (showRank) {
+      for (const rect of rects) {
+        if (!usableImages[rect.slot]) continue;
+        if (rankLimit > 0 && rect.slot >= rankLimit) continue;
+        const rc = rankColor(rect.slot);
+        const sz = Math.max(30, Math.min(rect.w, rect.h) * 0.22);
+        const bx = rect.x + sz * 0.28 + sz / 2;
+        const by = rect.y + sz * 0.28 + sz / 2;
+        ctx.save();
+        ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = sz*0.2; ctx.shadowOffsetY = sz*0.06;
+        ctx.beginPath(); ctx.arc(bx, by, sz/2, 0, Math.PI*2);
+        ctx.fillStyle = rc.bg; ctx.fill();
+        ctx.restore();
+        ctx.save();
+        ctx.fillStyle = rc.fg; ctx.font = `700 ${Math.round(sz*0.5)}px 'Space Grotesk', sans-serif`;
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(String(rect.slot+1), bx, by + sz*0.02);
+        ctx.restore();
+      }
+    }
+
+    return await new Promise(resolve => cv.toBlob(resolve, "image/png"));
+  };
+
   const exportImage = async () => {
     if (n === 0) return;
     if (exporting) return;
     setExporting(true);
     try {
-      const OUT = 1440;
-      const cW = OUT, cH = Math.round(OUT * ratio.h / ratio.w);
-      const cv = document.createElement("canvas");
-      cv.width = cW; cv.height = cH;
-      const ctx = cv.getContext("2d");
-      drawCanvasBg(ctx, cW, cH);
-      const SC = cW / 600;
-      const pad = padding * SC, g = gap * SC, tFS = titleSize * SC;
-      const tH = showTitle ? tFS * 1.5 + g : 0;
-
-      await new Promise(resolve => {
-        const probe = document.createElement("div");
-        probe.style.cssText = "position:fixed;top:-999px;left:-999px;visibility:hidden;"
-          + `font-family:${effectiveFont};font-weight:${titleWeight};font-size:32px;`;
-        probe.textContent = titleText || "A";
-        document.body.appendChild(probe);
-        document.fonts.ready.then(() => { document.body.removeChild(probe); resolve(); });
-      });
-
-      if (showTitle && titleText) {
-        ctx.fillStyle = titleColor;
-        ctx.font = `${titleWeight} ${Math.round(tFS)}px ${effectiveFont}`;
-        ctx.textBaseline = "alphabetic";
-        const disp = titleTransform === "uppercase" ? titleText.toUpperCase() : titleText;
-        ctx.save();
-        if (titleLetter && titleLetter !== "0") {
-          // letter-spacing emulation, centered
-          const ls = parseFloat(titleLetter) * tFS;
-          let total = 0;
-          for (const ch of disp) total += ctx.measureText(ch).width + ls;
-          total -= ls; // 末尾の余白を除く
-          ctx.textAlign = "left";
-          let x = (cW - total) / 2;
-          for (const ch of disp) { ctx.fillText(ch, x, pad + tFS); x += ctx.measureText(ch).width + ls; }
-        } else {
-          ctx.textAlign = "center";
-          ctx.fillText(disp, cW / 2, pad + tFS, cW - pad * 2);
-        }
-        ctx.restore();
-      }
-
-      const rects = layoutRects(cW, cH, pad, g, tH);
-      for (const rect of rects) {
-        const img = usableImages[rect.slot];
-        if (img) {
-          await new Promise(resolve => {
-            const el = new Image();
-            el.onload = () => {
-              const s = Math.max(rect.w / el.width, rect.h / el.height);
-              const dw = el.width * s, dh = el.height * s;
-              ctx.save(); ctx.beginPath(); ctx.roundRect(rect.x, rect.y, rect.w, rect.h, tight ? 0 : Math.max(6, Math.min(rect.w,rect.h)*0.06)); ctx.clip();
-              ctx.drawImage(el, rect.x + (rect.w - dw) / 2, rect.y + (rect.h - dh) / 2, dw, dh);
-              ctx.restore(); resolve();
-            };
-            el.onerror = () => resolve();
-            el.src = img.src;
-          });
-        }
-      }
-
-      // ランキングバッジ（プリセット時のみ）
-      if (showRank) {
-        for (const rect of rects) {
-          if (!usableImages[rect.slot]) continue;
-          if (rankLimit > 0 && rect.slot >= rankLimit) continue;
-          const rc = rankColor(rect.slot);
-          const sz = Math.max(30, Math.min(rect.w, rect.h) * 0.22);
-          const bx = rect.x + sz * 0.28 + sz / 2;
-          const by = rect.y + sz * 0.28 + sz / 2;
-          ctx.save();
-          ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = sz*0.2; ctx.shadowOffsetY = sz*0.06;
-          ctx.beginPath(); ctx.arc(bx, by, sz/2, 0, Math.PI*2);
-          ctx.fillStyle = rc.bg; ctx.fill();
-          ctx.restore();
-          ctx.save();
-          ctx.fillStyle = rc.fg; ctx.font = `700 ${Math.round(sz*0.5)}px 'Space Grotesk', sans-serif`;
-          ctx.textAlign = "center"; ctx.textBaseline = "middle";
-          ctx.fillText(String(rect.slot+1), bx, by + sz*0.02);
-          ctx.restore();
-        }
-      }
-
-      const dataURL = cv.toDataURL("image/png");
+      const blob = await renderCanvasBlob();
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = dataURL; a.download = `moviegrid-${Date.now()}.png`;
+      a.href = url; a.download = `moviegrid-${Date.now()}.png`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (err) {
       alert("書き出し失敗: " + err.message);
+    } finally { setExporting(false); }
+  };
+
+  // ── Web Share APIで画像を共有（スマホのみ）→ X / Threads ──
+  const shareImage = async (target) => {
+    if (n === 0 || exporting) return;
+    setExporting(true);
+    try {
+      const blob = await renderCanvasBlob();
+      const file = new File([blob], `moviegrid-${Date.now()}.png`, { type:"image/png" });
+      const text = showTitle && titleText ? titleText : "";
+      if (navigator.canShare && navigator.canShare({ files:[file] })) {
+        await navigator.share({ files:[file], text });
+      } else {
+        // フォールバック：画像を保存 → 各アプリで貼り付け
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = file.name;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        const label = target === "threads" ? "Threads" : "X";
+        alert(`画像を保存しました。${label}アプリを開いて貼り付けてください。\n（画像付き共有はスマホのみ対応です）`);
+      }
+    } catch (err) {
+      if (err.name !== "AbortError") alert("共有に失敗しました: " + err.message);
     } finally { setExporting(false); }
   };
 
@@ -975,6 +1016,15 @@ export default function App() {
               <button className="exp" onClick={exportImage} disabled={n===0 || exporting}>
                 {exporting ? "EXPORTING…" : "EXPORT PNG · 1440px"}
               </button>
+              <div className="share-row">
+                <button className="share-btn x" onClick={() => shareImage("x")} disabled={n===0 || exporting}>
+                  <span className="share-ic">𝕏</span>Xでシェア
+                </button>
+                <button className="share-btn th" onClick={() => shareImage("threads")} disabled={n===0 || exporting}>
+                  <span className="share-ic">@</span>Threadsでシェア
+                </button>
+              </div>
+              <p className="share-note">※ 画像付きシェアはスマホのみ対応（X / Threadsアプリが必要）</p>
               <div className="save-row">
                 <button className="save-btn" onClick={saveSettings}>SAVE</button>
                 <button className="reset-btn" onClick={resetSettings}>RESET</button>
