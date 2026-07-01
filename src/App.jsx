@@ -115,7 +115,7 @@ const STORAGE_KEY = "movie-grid-v4";
 const DEFAULT = {
   formatId:"editorial", layoutMode:"grid",
   cols:3, rows:2, ratioId:"4:5",
-  gap:10, padding:24,
+  gap:10, padding:24, tight:false,
   bgColor:"#0d0d0d", bg2Color:"#0d0d0d", bg3Color:"#0d0d0d", bgType:"solid", textColor:"#f2f0ea",
   showTitle:true, titleText:"MY FAVORITE FILMS",
   titleSize:30, titleWeight:300, titleColor:"#f2f0ea",
@@ -167,17 +167,19 @@ const css = `
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@400;500;600&family=DM+Serif+Display&family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Serif+JP:wght@300;400;500;600;700&display=swap');
   *{box-sizing:border-box;margin:0;padding:0;}
   :root{
-    --ink:#0a0a0a;--paper:#ffffff;
-    --g50:#fafafa;--g100:#f4f4f5;--g200:#e4e4e7;--g300:#d4d4d8;
-    --g400:#a1a1aa;--g500:#71717a;--g600:#52525b;--g700:#3f3f46;
-    --accent:#ff4d1c;
+    --ink:#ffffff;--paper:#0a0a0a;
+    --surface:#161616;--surface2:#1e1e1e;
+    --g50:#141414;--g100:#1c1c1c;--g200:#2a2a2a;--g300:#3a3a3a;
+    --g400:#6b6b6b;--g500:#8a8a8a;--g600:#a5a5a5;--g700:#c4c4c4;
+    --accent:#e8ff00;
+    --pop-yellow:#e8ff00;--pop-pink:#ff4db8;--pop-green:#4dff88;--pop-blue:#3d8bff;
     --disp:'Space Grotesk',sans-serif;
     --body:'Inter','Noto Sans JP',sans-serif;
     --jp:'Noto Sans JP',sans-serif;
     --r-sm:12px;--r-md:18px;--r-lg:24px;--r-pill:100px;
     --bd:1px solid var(--g200);
-    --soft:0 2px 8px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.05);
-    --soft-accent:0 4px 16px rgba(255,77,28,0.18);
+    --soft:0 2px 8px rgba(0,0,0,0.3),0 8px 24px rgba(0,0,0,0.4);
+    --soft-accent:0 4px 16px rgba(232,255,0,0.25);
   }
   body{font-family:var(--body);background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;}
 
@@ -186,14 +188,29 @@ const css = `
     position:absolute;top:24px;right:24px;z-index:5;}
   .visitor-num{font-family:var(--disp);font-size:13px;font-weight:600;color:var(--ink);}
 
-  .page{padding:0 0 120px;max-width:1320px;margin:0 auto;}
+  .page{padding:0 0 0;max-width:1320px;margin:0 auto;}
 
   /* HERO */
-  .hero{padding:32px 24px 36px;position:relative;}
-  .hero-h1{font-family:var(--disp);font-weight:500;font-size:clamp(40px,8vw,84px);line-height:0.92;
-    letter-spacing:-0.04em;color:var(--ink);}
-  .hero-h1 .out{color:transparent;-webkit-text-stroke:1.5px var(--ink);}
-  .hero-sub{font-size:14px;color:var(--g500);margin-top:18px;max-width:600px;line-height:1.7;}
+  .hero{padding:36px 24px 40px;position:relative;}
+  .hero-h1{font-family:var(--disp);font-weight:700;font-size:clamp(44px,9vw,92px);line-height:0.9;
+    letter-spacing:-0.05em;position:relative;display:inline-block;color:var(--ink);}
+  .hero-h1 .grad{
+    background:linear-gradient(100deg, var(--pop-yellow) 0%, var(--pop-pink) 55%, var(--pop-blue) 100%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
+  .hero-h1 .out{color:transparent;-webkit-text-stroke:1.5px var(--g500);}
+  .hero-star{color:var(--pop-yellow);font-size:0.42em;
+    vertical-align:top;margin-left:0.12em;display:inline-block;
+    filter:drop-shadow(0 0 14px rgba(232,255,0,0.7));animation:spin 8s linear infinite;}
+  @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+  /* FOOTER */
+  .footer{margin-top:80px;padding:48px 24px 56px;border-top:var(--bd);
+    display:flex;flex-direction:column;gap:14px;}
+  .footer-logo{font-family:var(--disp);font-size:28px;font-weight:700;letter-spacing:-0.04em;color:var(--ink);}
+  .footer-logo .out{color:transparent;-webkit-text-stroke:1.2px var(--g500);}
+  .footer-logo .hero-star{-webkit-text-fill-color:var(--pop-yellow);animation:none;filter:none;font-size:0.5em;}
+  .footer-sub{font-size:14px;color:var(--g500);max-width:560px;line-height:1.7;}
+  .footer-copy{font-family:var(--disp);font-size:11px;color:var(--g400);letter-spacing:0.06em;margin-top:8px;}
 
   .wrap{padding:32px 24px 0;}
   .layout{display:flex;flex-direction:column;gap:32px;}
@@ -210,10 +227,9 @@ const css = `
   @media(min-width:900px){ .col-right-wrap{display:flex;} }
 
   /* STEP */
-  .step{margin-bottom:28px;}
-  .step-hd{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;}
-  .step-n{font-family:var(--disp);font-size:13px;font-weight:600;color:var(--accent);}
-  .step-t{font-family:var(--disp);font-size:17px;font-weight:600;letter-spacing:-0.02em;color:var(--ink);}
+  .step{margin-bottom:20px;border:var(--bd);border-radius:var(--r-lg);padding:22px;background:var(--paper);box-shadow:var(--soft);}
+  .step-hd{display:flex;align-items:baseline;gap:10px;margin-bottom:16px;}
+  .step-t{font-family:var(--disp);font-size:22px;font-weight:700;letter-spacing:-0.03em;color:var(--ink);}
   .step-hint{font-size:12px;color:var(--g400);margin-left:auto;}
 
   /* TITLE INPUT */
@@ -231,7 +247,7 @@ const css = `
   .lang-toggle{display:inline-flex;gap:0;margin-bottom:12px;border:var(--bd);border-radius:var(--r-pill);overflow:hidden;}
   .lang-btn{padding:8px 18px;border:none;background:transparent;font-family:var(--disp);font-size:12px;
     font-weight:500;color:var(--g500);cursor:pointer;transition:all .12s;}
-  .lang-btn.on{background:var(--ink);color:var(--paper);}
+  .lang-btn.on{background:var(--pop-yellow);color:#0a0a0a;}
   .search-inp{width:100%;padding:16px 20px;border:var(--bd);border-radius:var(--r-md);background:var(--g50);
     font-family:var(--body);font-size:16px;color:var(--ink);outline:none;-webkit-appearance:none;transition:all .15s;}
   .search-inp:focus{background:var(--paper);box-shadow:var(--soft);}
@@ -291,8 +307,8 @@ const css = `
   .mode-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .mode-card{padding:16px;border-radius:var(--r-md);border:var(--bd);background:var(--paper);cursor:pointer;text-align:left;
     transition:all .12s;-webkit-tap-highlight-color:transparent;}
-  .mode-card.on{background:var(--ink);border-color:var(--ink);box-shadow:var(--soft);}
-  .mode-card.on .mode-name{color:var(--paper);} .mode-card.on .mode-desc{color:var(--g400);}
+  .mode-card.on{background:var(--pop-yellow);border-color:var(--pop-yellow);box-shadow:var(--soft-accent);}
+  .mode-card.on .mode-name{color:#0a0a0a;} .mode-card.on .mode-desc{color:#3a3a00;}
   .mode-name{font-family:var(--disp);font-size:14px;font-weight:600;color:var(--ink);letter-spacing:-0.01em;}
   .mode-desc{font-size:11px;color:var(--g500);margin-top:3px;}
 
@@ -327,7 +343,15 @@ const css = `
   .chip{font-family:var(--disp);font-size:11px;padding:7px 14px;border:var(--bd);border-radius:var(--r-pill);
     background:var(--paper);color:var(--ink);cursor:pointer;transition:all .12s;font-weight:500;
     -webkit-tap-highlight-color:transparent;}
-  .chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  .chip.on{background:var(--pop-yellow);color:#0a0a0a;border-color:var(--pop-yellow);}
+  .tight-btn{width:100%;margin-top:12px;padding:13px 16px;border:var(--bd);border-radius:var(--r-md);
+    background:var(--paper);color:var(--ink);font-family:var(--disp);font-size:13px;font-weight:600;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;
+    -webkit-tap-highlight-color:transparent;}
+  .tight-btn:active{transform:scale(0.98);}
+  .tight-btn.on{background:var(--pop-yellow);border-color:var(--pop-yellow);color:#0a0a0a;
+    box-shadow:0 4px 16px rgba(232,255,0,0.35);}
+  .tight-btn.on.rank{background:#ffd700;border-color:#ffd700;box-shadow:0 4px 16px rgba(255,215,0,0.4);}
 
   /* ACCORDION */
   .acc{border:var(--bd);border-radius:var(--r-md);overflow:hidden;background:var(--paper);}
@@ -344,11 +368,11 @@ const css = `
     margin-bottom:12px;font-weight:700;}
 
   /* EXPORT */
-  .exp{width:100%;padding:18px 0;border:none;border-radius:var(--r-pill);background:var(--ink);color:var(--paper);
-    font-family:var(--disp);font-size:15px;font-weight:600;letter-spacing:-0.01em;cursor:pointer;
-    transition:all .15s;-webkit-tap-highlight-color:transparent;box-shadow:var(--soft);}
+  .exp{width:100%;padding:18px 0;border:none;border-radius:var(--r-pill);background:var(--pop-yellow);color:#0a0a0a;
+    font-family:var(--disp);font-size:15px;font-weight:700;letter-spacing:-0.01em;cursor:pointer;
+    transition:all .15s;-webkit-tap-highlight-color:transparent;box-shadow:var(--soft-accent);}
   .exp:active{transform:scale(0.98);}
-  .exp:hover:not(:disabled){box-shadow:var(--soft-accent);}
+  .exp:hover:not(:disabled){box-shadow:0 6px 24px rgba(232,255,0,0.4);}
   .exp:disabled{background:var(--g200);color:var(--g400);cursor:default;box-shadow:none;}
   .save-row{display:flex;gap:10px;}
   .save-btn{flex:1;padding:13px 0;border:var(--bd);border-radius:var(--r-pill);background:var(--paper);color:var(--ink);
@@ -396,6 +420,8 @@ export default function App() {
   const [autoRatio, setAutoRatio]     = useState(true);
   const [gap, setGap]                 = useState(DEFAULT.gap);
   const [padding, setPadding]         = useState(DEFAULT.padding);
+  const [tight, setTight]             = useState(DEFAULT.tight);
+  const [showRank, setShowRank]       = useState(false);
   const [bgColor, setBgColor]         = useState(DEFAULT.bgColor);
   const [bg2Color, setBg2Color]       = useState(DEFAULT.bg2Color);
   const [bg3Color, setBg3Color]       = useState(DEFAULT.bg3Color);
@@ -454,6 +480,8 @@ export default function App() {
       if (s.autoRatio != null) setAutoRatio(s.autoRatio);
       if (s.gap != null) setGap(s.gap);
       if (s.padding != null) setPadding(s.padding);
+      if (s.tight != null) setTight(s.tight);
+      if (s.showRank != null) setShowRank(s.showRank);
       if (s.bgColor)     setBgColor(s.bgColor);
       if (s.bg2Color)    setBg2Color(s.bg2Color);
       if (s.bg3Color)    setBg3Color(s.bg3Color);
@@ -493,7 +521,11 @@ export default function App() {
     { n:10, mode:"top1",  cols:3, rows:3, label:"TOP10" },
     { n:12, mode:"grid",  cols:3, rows:4, label:"TOP12" },
   ];
-  const applyCount = (p) => { setLayoutMode(p.mode); setCols(p.cols); setRows(p.rows); };
+  const applyCount = (p) => { setLayoutMode(p.mode); setCols(p.cols); setRows(p.rows); setShowRank(true); };
+  const toggleTight = () => {
+    if (tight) { setTight(false); setGap(DEFAULT.gap); setPadding(DEFAULT.padding); }
+    else { setTight(true); setGap(0); setPadding(0); }
+  };
 
   const applyFormat = (f) => {
     setFormatId(f.id);
@@ -525,7 +557,7 @@ export default function App() {
   const saveSettings = () => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        formatId, layoutMode, cols, rows, ratioId:ratio.id, autoRatio, gap, padding,
+        formatId, layoutMode, cols, rows, ratioId:ratio.id, autoRatio, gap, padding, tight, showRank,
         bgColor, bg2Color, bg3Color, bgType, textColor, showTitle, titleText, titleSize, titleWeight, titleColor,
         titleFont, titleTransform, titleLetter, jpSerif,
       }));
@@ -537,7 +569,7 @@ export default function App() {
     const d = DEFAULT;
     setFormatId(d.formatId); setLayoutMode(d.layoutMode);
     setCols(d.cols); setRows(d.rows); setRatio(DEFAULT_RATIO); setAutoRatio(true);
-    setGap(d.gap); setPadding(d.padding);
+    setGap(d.gap); setPadding(d.padding); setTight(d.tight); setShowRank(false);
     setBgColor(d.bgColor); setBg2Color(d.bg2Color); setBg3Color(d.bg3Color); setBgType(d.bgType); setTextColor(d.textColor);
     setShowTitle(d.showTitle); setTitleText(d.titleText);
     setTitleSize(d.titleSize); setTitleWeight(d.titleWeight); setTitleColor(d.titleColor);
@@ -827,13 +859,34 @@ export default function App() {
             el.onload = () => {
               const s = Math.max(rect.w / el.width, rect.h / el.height);
               const dw = el.width * s, dh = el.height * s;
-              ctx.save(); ctx.beginPath(); ctx.roundRect(rect.x, rect.y, rect.w, rect.h, Math.max(6, Math.min(rect.w,rect.h)*0.06)); ctx.clip();
+              ctx.save(); ctx.beginPath(); ctx.roundRect(rect.x, rect.y, rect.w, rect.h, tight ? 0 : Math.max(6, Math.min(rect.w,rect.h)*0.06)); ctx.clip();
               ctx.drawImage(el, rect.x + (rect.w - dw) / 2, rect.y + (rect.h - dh) / 2, dw, dh);
               ctx.restore(); resolve();
             };
             el.onerror = () => resolve();
             el.src = img.src;
           });
+        }
+      }
+
+      // ランキングバッジ（プリセット時のみ）
+      if (showRank) {
+        for (const rect of rects) {
+          if (!usableImages[rect.slot]) continue;
+          const rc = rankColor(rect.slot);
+          const sz = Math.max(30, Math.min(rect.w, rect.h) * 0.22);
+          const bx = rect.x + sz * 0.28 + sz / 2;
+          const by = rect.y + sz * 0.28 + sz / 2;
+          ctx.save();
+          ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = sz*0.2; ctx.shadowOffsetY = sz*0.06;
+          ctx.beginPath(); ctx.arc(bx, by, sz/2, 0, Math.PI*2);
+          ctx.fillStyle = rc.bg; ctx.fill();
+          ctx.restore();
+          ctx.save();
+          ctx.fillStyle = rc.fg; ctx.font = `700 ${Math.round(sz*0.5)}px 'Space Grotesk', sans-serif`;
+          ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText(String(rect.slot+1), bx, by + sz*0.02);
+          ctx.restore();
         }
       }
 
@@ -847,6 +900,14 @@ export default function App() {
   };
 
   const dispTitle = titleTransform === "uppercase" ? (titleText || "").toUpperCase() : titleText;
+  // ランキング色: 1位金/2位銀/3位銅/他はポップカラー
+  const rankColor = (i) => {
+    if (i === 0) return { bg:"#ffd700", fg:"#3d2b00" }; // 金
+    if (i === 1) return { bg:"#c8ccd4", fg:"#2a2d33" }; // 銀
+    if (i === 2) return { bg:"#cd7f32", fg:"#2e1a08" }; // 銅
+    const pops = ["#ff4db8","#4dff88","#3d8bff","#e8ff00","#c084fc","#ff7a3d","#22d3ee"];
+    return { bg:pops[(i-3) % pops.length], fg:"#0a0a0a" };
+  };
   // 英語書体に日本語フォールバックを足す。jpSerifでセリフ/サンセリフを切替
   const jpFontFamily = jpSerif ? "'Noto Serif JP', serif" : "'Noto Sans JP', sans-serif";
   const effectiveFont = `${titleFont.replace(/,?\s*(sans-serif|serif)\s*$/,"")}, ${jpFontFamily}`;
@@ -858,8 +919,7 @@ export default function App() {
       <div className="page">
         <div className="hero">
           {visitors !== null && <div className="visitor"><span>VISITORS</span><span className="visitor-num">{visitors.toLocaleString()}</span></div>}
-          <h1 className="hero-h1">MOVIE<span className="out">GRID.</span></h1>
-          <p className="hero-sub">映画を検索してポスターを選ぶ。<br/>フォーマットを選ぶだけで、雑誌のようなSNS画像が完成する。</p>
+          <h1 className="hero-h1">MOVIE<span className="grad">GRID</span><span className="hero-star">✦</span></h1>
         </div>
 
         <div className="wrap">
@@ -889,13 +949,21 @@ export default function App() {
                         data-scope={img ? "preview" : undefined}
                         onPointerDown={img ? onPointerDown(rect.slot) : undefined}
                         style={{ position:"absolute", left:rect.x, top:rect.y, width:rect.w, height:rect.h,
-                          overflow:"hidden", borderRadius:Math.max(4, Math.min(rect.w,rect.h)*0.06),
+                          overflow:"hidden", borderRadius: tight ? 0 : Math.max(4, Math.min(rect.w,rect.h)*0.06),
                           background: img ? "transparent" : `${textColor}0d`,
                           cursor: img ? "grab" : "default", touchAction: img ? "none" : "auto",
                           opacity: draggingIdx===rect.slot ? 0.7 : 1,
                           outline: draggingIdx===rect.slot ? "2px solid var(--accent)" : "none",
                           display:"flex", alignItems:"center", justifyContent:"center" }}>
                         {img && <img src={img.thumb||img.src} alt="" draggable={false} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", pointerEvents:"none" }} />}
+                        {img && showRank && (() => {
+                          const rc = rankColor(rect.slot);
+                          const sz = Math.max(18, Math.min(rect.w, rect.h) * 0.22);
+                          return <div style={{ position:"absolute", top:sz*0.28, left:sz*0.28, width:sz, height:sz,
+                            borderRadius:"50%", background:rc.bg, color:rc.fg, display:"flex", alignItems:"center",
+                            justifyContent:"center", fontFamily:"var(--disp)", fontWeight:700, fontSize:sz*0.5,
+                            boxShadow:"0 2px 6px rgba(0,0,0,0.3)", pointerEvents:"none" }}>{rect.slot+1}</div>;
+                        })()}
                       </div>
                     );
                   })}
@@ -916,7 +984,7 @@ export default function App() {
               <div className="input-area">
                 {/* 1 TITLE */}
                 <div className="step">
-                  <div className="step-hd"><span className="step-n">01</span><span className="step-t">Title</span></div>
+                  <div className="step-hd"><span className="step-t">Title</span></div>
                   <input type="text" className="title-inp" value={titleText} onChange={e => setTitleText(e.target.value)}
                     placeholder="MY FAVORITE FILMS" disabled={!showTitle} />
                   <label className="cb"><input type="checkbox" checked={showTitle} onChange={e => setShowTitle(e.target.checked)} />画像にタイトルを表示</label>
@@ -924,7 +992,7 @@ export default function App() {
 
                 {/* 2 SEARCH */}
                 <div className="step">
-                  <div className="step-hd"><span className="step-n">02</span><span className="step-t">Find Films</span></div>
+                  <div className="step-hd"><span className="step-t">Find Films</span></div>
                   <div className="lang-toggle">
                     {[["ja-JP","日本語"],["en-US","EN"]].map(([v,l]) => (
                       <button key={v} className={`lang-btn${lang===v?" on":""}`} onClick={() => setLang(v)}>{l}</button>
@@ -968,14 +1036,14 @@ export default function App() {
               <div className="controls">
                 {/* 3 FORMAT */}
                 <div className="step">
-                  <div className="step-hd"><span className="step-n">03</span><span className="step-t">Format</span><span className="step-hint">選ぶだけで完成</span></div>
+                  <div className="step-hd"><span className="step-t">Format</span></div>
                   <div className="fmt-row">
                     {FORMATS.map(f => (
                       <div key={f.id} className={`fmt-card${formatId===f.id?" on":""}`} onClick={() => applyFormat(f)}>
                         <div className="fmt-prev" style={{ background:f.bg }}>
                           <span className="fmt-prev-t" style={{ color:f.titleColor, fontFamily:f.titleFont, fontWeight:f.weight, textTransform:f.transform, letterSpacing:f.letter }}>Aa</span>
                         </div>
-                        <div className="fmt-meta"><div className="fmt-name">{f.name}</div><div className="fmt-tag">{f.tag}</div></div>
+                        <div className="fmt-meta"><div className="fmt-name">{f.name}</div></div>
                       </div>
                     ))}
                   </div>
@@ -983,11 +1051,11 @@ export default function App() {
 
                 {/* 4 LAYOUT */}
                 <div className="step">
-                  <div className="step-hd"><span className="step-n">04</span><span className="step-t">Layout</span></div>
+                  <div className="step-hd"><span className="step-t">Layout</span></div>
                   <div className="mode-row" style={{ gridTemplateColumns:"1fr 1fr 1fr" }}>
                     {LAYOUT_MODES.map(m => (
                       <button key={m.id} className={`mode-card${layoutMode===m.id?" on":""}`} onClick={() => setLayoutMode(m.id)}>
-                        <div className="mode-name">{m.name}</div><div className="mode-desc">{m.desc}</div>
+                        <div className="mode-name">{m.name}</div>
                       </button>
                     ))}
                   </div>
@@ -998,6 +1066,14 @@ export default function App() {
                       return <button key={p.label} className={`chip${on?" on":""}`} onClick={() => applyCount(p)}>{p.label}</button>;
                     })}
                   </div>
+                  <button className={`tight-btn${tight?" on":""}`} onClick={toggleTight}>
+                    <span>{tight ? "■" : "▦"}</span>
+                    NO MARGIN
+                  </button>
+                  <button className={`tight-btn${showRank?" on rank":""}`} onClick={() => setShowRank(v => !v)} style={{ marginTop:10 }}>
+                    <span>{showRank ? "①" : "○"}</span>
+                    RANKING
+                  </button>
                   <div style={{ display:"flex", flexDirection:"column", gap:12, marginTop:16 }}>
                     <SliderRow label={layoutMode==="grid"?"列":"下段の列"} value={cols} min={1} max={8} step={1} onChange={setCols} />
                     <SliderRow label={layoutMode==="grid"?"行":"下段の行"} value={rows} min={1} max={8} step={1} onChange={setRows} />
@@ -1066,8 +1142,8 @@ export default function App() {
                       <div>
                         <p className="sect-t">Spacing</p>
                         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-                          <SliderRow label="隙間" value={gap} min={0} max={24} step={1} onChange={setGap} unit="px" />
-                          <SliderRow label="余白" value={padding} min={0} max={64} step={1} onChange={setPadding} unit="px" />
+                          <SliderRow label="隙間" value={gap} min={0} max={24} step={1} onChange={v => { setGap(v); setTight(false); }} unit="px" />
+                          <SliderRow label="余白" value={padding} min={0} max={64} step={1} onChange={v => { setPadding(v); setTight(false); }} unit="px" />
                         </div>
                       </div>
                       {showTitle && (
@@ -1105,6 +1181,12 @@ export default function App() {
             </div>
           </div>
         </div>
+
+        <footer className="footer">
+          <div className="footer-logo">MOVIE<span className="out">GRID</span><span className="hero-star">✦</span></div>
+          <p className="footer-sub">映画を検索してポスターを選ぶ。フォーマットを選ぶだけで、雑誌のようなSNS画像が完成する。</p>
+          <p className="footer-copy">© {new Date().getFullYear()} MOVIEGRID</p>
+        </footer>
       </div>
 
     </>
