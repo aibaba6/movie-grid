@@ -107,7 +107,7 @@ const PALETTES = [
 
 const LAYOUT_MODES = [
   { id:"grid",  name:"均等グリッド", desc:"すべて同じ大きさ" },
-  { id:"best3", name:"ベスト3",      desc:"上段に大きく3枚" },
+  { id:"best3", name:"BEST3",      desc:"上段に大きく3枚" },
   { id:"top1",  name:"TOP1",        desc:"1枚を主役に大きく" },
 ];
 
@@ -209,7 +209,7 @@ const css = `
   .footer-logo{font-family:var(--disp);font-size:28px;font-weight:700;letter-spacing:-0.04em;color:var(--ink);}
   .footer-logo .out{color:transparent;-webkit-text-stroke:1.2px var(--g500);}
   .footer-logo .hero-star{-webkit-text-fill-color:var(--pop-yellow);animation:none;filter:none;font-size:0.5em;}
-  .footer-sub{font-size:14px;color:var(--g500);max-width:560px;line-height:1.7;}
+  .footer-sub{font-size:14px;color:var(--g500);line-height:1.7;white-space:nowrap;}
   .footer-copy{font-family:var(--disp);font-size:11px;color:var(--g400);letter-spacing:0.06em;margin-top:8px;}
 
   .wrap{padding:32px 24px 0;}
@@ -422,6 +422,7 @@ export default function App() {
   const [padding, setPadding]         = useState(DEFAULT.padding);
   const [tight, setTight]             = useState(DEFAULT.tight);
   const [showRank, setShowRank]       = useState(false);
+  const [rankLimit, setRankLimit]     = useState(0); // 0=全件
   const [bgColor, setBgColor]         = useState(DEFAULT.bgColor);
   const [bg2Color, setBg2Color]       = useState(DEFAULT.bg2Color);
   const [bg3Color, setBg3Color]       = useState(DEFAULT.bg3Color);
@@ -482,6 +483,7 @@ export default function App() {
       if (s.padding != null) setPadding(s.padding);
       if (s.tight != null) setTight(s.tight);
       if (s.showRank != null) setShowRank(s.showRank);
+      if (s.rankLimit != null) setRankLimit(s.rankLimit);
       if (s.bgColor)     setBgColor(s.bgColor);
       if (s.bg2Color)    setBg2Color(s.bg2Color);
       if (s.bg3Color)    setBg3Color(s.bg3Color);
@@ -557,7 +559,7 @@ export default function App() {
   const saveSettings = () => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        formatId, layoutMode, cols, rows, ratioId:ratio.id, autoRatio, gap, padding, tight, showRank,
+        formatId, layoutMode, cols, rows, ratioId:ratio.id, autoRatio, gap, padding, tight, showRank, rankLimit,
         bgColor, bg2Color, bg3Color, bgType, textColor, showTitle, titleText, titleSize, titleWeight, titleColor,
         titleFont, titleTransform, titleLetter, jpSerif,
       }));
@@ -873,6 +875,7 @@ export default function App() {
       if (showRank) {
         for (const rect of rects) {
           if (!usableImages[rect.slot]) continue;
+          if (rankLimit > 0 && rect.slot >= rankLimit) continue;
           const rc = rankColor(rect.slot);
           const sz = Math.max(30, Math.min(rect.w, rect.h) * 0.22);
           const bx = rect.x + sz * 0.28 + sz / 2;
@@ -956,7 +959,7 @@ export default function App() {
                           outline: draggingIdx===rect.slot ? "2px solid var(--accent)" : "none",
                           display:"flex", alignItems:"center", justifyContent:"center" }}>
                         {img && <img src={img.thumb||img.src} alt="" draggable={false} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", pointerEvents:"none" }} />}
-                        {img && showRank && (() => {
+                        {img && showRank && (rankLimit === 0 || rect.slot < rankLimit) && (() => {
                           const rc = rankColor(rect.slot);
                           const sz = Math.max(18, Math.min(rect.w, rect.h) * 0.22);
                           return <div style={{ position:"absolute", top:sz*0.28, left:sz*0.28, width:sz, height:sz,
@@ -1073,6 +1076,16 @@ export default function App() {
                   <button className={`tight-btn${showRank?" on rank":""}`} onClick={() => setShowRank(v => !v)} style={{ marginTop:10 }}>
                     <span>{showRank ? "①" : "○"}</span>
                     RANKING
+                  </button>
+                  {showRank && (
+                    <div className="chips" style={{ marginTop:10 }}>
+                      {[0,1,2,3,5,10].map(n => (
+                        <button key={n} className={`chip${rankLimit===n?" on":""}`} onClick={() => setRankLimit(n)}>
+                          {n === 0 ? "ALL" : `TOP${n}`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   </button>
                   <div style={{ display:"flex", flexDirection:"column", gap:12, marginTop:16 }}>
                     <SliderRow label={layoutMode==="grid"?"列":"下段の列"} value={cols} min={1} max={8} step={1} onChange={setCols} />
