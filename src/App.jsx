@@ -192,7 +192,7 @@ const css = `
   .page{padding:0 0 0;max-width:1320px;margin:0 auto;}
 
   /* HERO */
-  .hero{padding:36px 24px 40px;position:relative;}
+  .hero{padding:36px 24px 20px;position:relative;}
   .hero-h1{font-family:var(--disp);font-weight:700;font-size:clamp(44px,9vw,92px);line-height:0.9;
     letter-spacing:-0.05em;position:relative;display:inline-block;color:var(--ink);}
   .hero-h1 .grad{
@@ -206,14 +206,27 @@ const css = `
 
   /* FOOTER */
   .footer{margin-top:80px;padding:48px 24px 56px;border-top:var(--bd);
-    display:flex;flex-direction:column;gap:14px;}
+    display:flex;flex-direction:column;gap:24px;}
+  @media(min-width:640px){
+    .footer{flex-direction:row;justify-content:space-between;align-items:flex-start;}
+    .footer-right{align-items:flex-end;text-align:right;}
+  }
+  .footer-left{display:flex;flex-direction:column;gap:12px;}
+  .footer-right{display:flex;flex-direction:column;gap:14px;}
   .footer-logo{font-family:var(--disp);font-size:28px;font-weight:700;letter-spacing:-0.04em;color:var(--ink);}
   .footer-logo .out{color:transparent;-webkit-text-stroke:1.2px var(--g500);}
   .footer-logo .hero-star{-webkit-text-fill-color:var(--pop-yellow);animation:none;filter:none;font-size:0.5em;}
   .footer-sub{font-size:14px;color:var(--g500);line-height:1.7;white-space:nowrap;}
-  .footer-copy{font-family:var(--disp);font-size:11px;color:var(--g400);letter-spacing:0.06em;margin-top:8px;}
+  .footer-op{font-size:12px;color:var(--g400);letter-spacing:0.02em;}
+  .footer-op b{color:var(--ink);font-weight:600;font-family:var(--disp);letter-spacing:0.04em;}
+  .footer-social{display:flex;gap:10px;}
+  .social-link{width:38px;height:38px;border:var(--bd);border-radius:50%;display:flex;align-items:center;justify-content:center;
+    color:var(--g500);transition:all .14s;-webkit-tap-highlight-color:transparent;}
+  .social-link:hover{background:var(--ink);color:var(--paper);border-color:var(--ink);transform:translateY(-2px);}
+  .social-link svg{width:17px;height:17px;}
+  .footer-copy{font-family:var(--disp);font-size:11px;color:var(--g400);letter-spacing:0.06em;}
 
-  .wrap{padding:32px 24px 0;}
+  .wrap{padding:12px 24px 0;}
   .layout{display:flex;flex-direction:column;gap:32px;}
   .col-preview{order:2;display:flex;flex-direction:column;gap:14px;}
   .input-area{order:1;display:flex;flex-direction:column;gap:0;}
@@ -375,24 +388,17 @@ const css = `
   .exp:active{transform:scale(0.98);}
   .exp:hover:not(:disabled){box-shadow:0 6px 24px rgba(232,255,0,0.4);}
   .exp:disabled{background:var(--g200);color:var(--g400);cursor:default;box-shadow:none;}
-  .share-row{display:flex;gap:10px;margin-top:10px;}
-  .share-btn{flex:1;padding:13px 0;border:var(--bd);border-radius:var(--r-pill);background:var(--paper);color:var(--ink);
-    font-family:var(--disp);font-size:12px;font-weight:600;cursor:pointer;transition:all .12s;
-    display:flex;align-items:center;justify-content:center;gap:7px;-webkit-tap-highlight-color:transparent;}
-  .share-btn:active{transform:scale(0.97);}
-  .share-btn:disabled{opacity:0.4;cursor:default;}
-  .share-btn.x:hover:not(:disabled){background:#000;color:#fff;border-color:#000;}
-  .share-btn.th:hover:not(:disabled){background:#000;color:#fff;border-color:#000;}
-  .share-ic{font-size:14px;font-weight:700;}
-  .share-note{font-size:10px;color:var(--g400);text-align:center;margin-top:8px;line-height:1.5;}
-  .save-row{display:flex;gap:10px;margin-top:12px;}
-  .save-btn{flex:1;padding:13px 0;border:var(--bd);border-radius:var(--r-pill);background:var(--paper);color:var(--ink);
-    font-family:var(--disp);font-size:12px;font-weight:500;cursor:pointer;transition:all .12s;}
+  .save-row{display:flex;gap:10px;}
+  .save-btn{flex:1;padding:14px 0;border:2px solid var(--accent);border-radius:var(--r-pill);
+    background:rgba(232,255,0,0.08);color:var(--ink);
+    font-family:var(--disp);font-size:14px;font-weight:700;letter-spacing:0.1em;cursor:pointer;transition:all .14s;}
+  .save-btn:hover{background:var(--accent);color:#0a0a0a;box-shadow:0 4px 18px rgba(232,255,0,0.35);}
   .save-btn:active{transform:scale(0.97);}
-  .reset-btn{padding:13px 20px;border:var(--bd);border-radius:var(--r-pill);background:var(--paper);color:var(--g500);
-    font-family:var(--disp);font-size:12px;font-weight:500;cursor:pointer;}
-  .st{font-size:11px;color:var(--accent);text-align:center;min-height:14px;font-weight:600;
-    font-family:var(--disp);letter-spacing:0.04em;}
+  .reset-btn{padding:14px 22px;border:var(--bd);border-radius:var(--r-pill);background:var(--paper);color:var(--g500);
+    font-family:var(--disp);font-size:12px;font-weight:500;cursor:pointer;transition:all .12s;}
+  .reset-btn:hover{color:var(--ink);border-color:var(--g400);}
+  .st{font-size:12px;color:var(--accent);text-align:center;min-height:16px;font-weight:700;margin-top:4px;
+    font-family:var(--disp);letter-spacing:0.04em;transition:opacity .2s;}
   .prev-hd{display:flex;justify-content:space-between;align-items:baseline;}
   .prev-ct{font-size:11px;color:var(--g400);font-weight:500;}
   .hint{font-size:11px;color:var(--g400);line-height:1.6;}
@@ -574,7 +580,7 @@ export default function App() {
         bgColor, bg2Color, bg3Color, bgType, textColor, showTitle, titleText, titleSize, titleWeight, titleColor,
         titleFont, titleTransform, titleLetter, jpSerif,
       }));
-      showSt("SAVED");
+      showSt("✓ SAVED");
     } catch (_) { showSt("ERROR"); }
   };
   const resetSettings = () => {
@@ -817,130 +823,99 @@ export default function App() {
     }
   }
 
-  // ── canvasにグリッドを描画してBlobを返す（export/share共通）──
-  const renderCanvasBlob = async () => {
-    const OUT = 1440;
-    const cW = OUT, cH = Math.round(OUT * ratio.h / ratio.w);
-    const cv = document.createElement("canvas");
-    cv.width = cW; cv.height = cH;
-    const ctx = cv.getContext("2d");
-    drawCanvasBg(ctx, cW, cH);
-    const SC = cW / 600;
-    const pad = padding * SC, g = gap * SC, tFS = titleSize * SC;
-    const tH = showTitle ? tFS * 1.5 + g : 0;
-
-    await new Promise(resolve => {
-      const probe = document.createElement("div");
-      probe.style.cssText = "position:fixed;top:-999px;left:-999px;visibility:hidden;"
-        + `font-family:${effectiveFont};font-weight:${titleWeight};font-size:32px;`;
-      probe.textContent = titleText || "A";
-      document.body.appendChild(probe);
-      document.fonts.ready.then(() => { document.body.removeChild(probe); resolve(); });
-    });
-
-    if (showTitle && titleText) {
-      ctx.fillStyle = titleColor;
-      ctx.font = `${titleWeight} ${Math.round(tFS)}px ${effectiveFont}`;
-      ctx.textBaseline = "alphabetic";
-      const disp = titleTransform === "uppercase" ? titleText.toUpperCase() : titleText;
-      ctx.save();
-      if (titleLetter && titleLetter !== "0") {
-        const ls = parseFloat(titleLetter) * tFS;
-        let total = 0;
-        for (const ch of disp) total += ctx.measureText(ch).width + ls;
-        total -= ls;
-        ctx.textAlign = "left";
-        let x = (cW - total) / 2;
-        for (const ch of disp) { ctx.fillText(ch, x, pad + tFS); x += ctx.measureText(ch).width + ls; }
-      } else {
-        ctx.textAlign = "center";
-        ctx.fillText(disp, cW / 2, pad + tFS, cW - pad * 2);
-      }
-      ctx.restore();
-    }
-
-    const rects = layoutRects(cW, cH, pad, g, tH);
-    for (const rect of rects) {
-      const img = usableImages[rect.slot];
-      if (img) {
-        await new Promise(resolve => {
-          const el = new Image();
-          el.onload = () => {
-            const s = Math.max(rect.w / el.width, rect.h / el.height);
-            const dw = el.width * s, dh = el.height * s;
-            ctx.save(); ctx.beginPath(); ctx.roundRect(rect.x, rect.y, rect.w, rect.h, tight ? 0 : Math.max(6, Math.min(rect.w,rect.h)*0.06)); ctx.clip();
-            ctx.drawImage(el, rect.x + (rect.w - dw) / 2, rect.y + (rect.h - dh) / 2, dw, dh);
-            ctx.restore(); resolve();
-          };
-          el.onerror = () => resolve();
-          el.src = img.src;
-        });
-      }
-    }
-
-    // ランキングバッジ（プリセット時のみ）
-    if (showRank) {
-      for (const rect of rects) {
-        if (!usableImages[rect.slot]) continue;
-        if (rankLimit > 0 && rect.slot >= rankLimit) continue;
-        const rc = rankColor(rect.slot);
-        const sz = Math.max(30, Math.min(rect.w, rect.h) * 0.22);
-        const bx = rect.x + sz * 0.28 + sz / 2;
-        const by = rect.y + sz * 0.28 + sz / 2;
-        ctx.save();
-        ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = sz*0.2; ctx.shadowOffsetY = sz*0.06;
-        ctx.beginPath(); ctx.arc(bx, by, sz/2, 0, Math.PI*2);
-        ctx.fillStyle = rc.bg; ctx.fill();
-        ctx.restore();
-        ctx.save();
-        ctx.fillStyle = rc.fg; ctx.font = `700 ${Math.round(sz*0.5)}px 'Space Grotesk', sans-serif`;
-        ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText(String(rect.slot+1), bx, by + sz*0.02);
-        ctx.restore();
-      }
-    }
-
-    return await new Promise(resolve => cv.toBlob(resolve, "image/png"));
-  };
-
   const exportImage = async () => {
     if (n === 0) return;
     if (exporting) return;
     setExporting(true);
     try {
-      const blob = await renderCanvasBlob();
-      const url = URL.createObjectURL(blob);
+      const OUT = 1440;
+      const cW = OUT, cH = Math.round(OUT * ratio.h / ratio.w);
+      const cv = document.createElement("canvas");
+      cv.width = cW; cv.height = cH;
+      const ctx = cv.getContext("2d");
+      drawCanvasBg(ctx, cW, cH);
+      const SC = cW / 600;
+      const pad = padding * SC, g = gap * SC, tFS = titleSize * SC;
+      const tH = showTitle ? tFS * 1.5 + g : 0;
+
+      await new Promise(resolve => {
+        const probe = document.createElement("div");
+        probe.style.cssText = "position:fixed;top:-999px;left:-999px;visibility:hidden;"
+          + `font-family:${effectiveFont};font-weight:${titleWeight};font-size:32px;`;
+        probe.textContent = titleText || "A";
+        document.body.appendChild(probe);
+        document.fonts.ready.then(() => { document.body.removeChild(probe); resolve(); });
+      });
+
+      if (showTitle && titleText) {
+        ctx.fillStyle = titleColor;
+        ctx.font = `${titleWeight} ${Math.round(tFS)}px ${effectiveFont}`;
+        ctx.textBaseline = "alphabetic";
+        const disp = titleTransform === "uppercase" ? titleText.toUpperCase() : titleText;
+        ctx.save();
+        if (titleLetter && titleLetter !== "0") {
+          // letter-spacing emulation, centered
+          const ls = parseFloat(titleLetter) * tFS;
+          let total = 0;
+          for (const ch of disp) total += ctx.measureText(ch).width + ls;
+          total -= ls; // 末尾の余白を除く
+          ctx.textAlign = "left";
+          let x = (cW - total) / 2;
+          for (const ch of disp) { ctx.fillText(ch, x, pad + tFS); x += ctx.measureText(ch).width + ls; }
+        } else {
+          ctx.textAlign = "center";
+          ctx.fillText(disp, cW / 2, pad + tFS, cW - pad * 2);
+        }
+        ctx.restore();
+      }
+
+      const rects = layoutRects(cW, cH, pad, g, tH);
+      for (const rect of rects) {
+        const img = usableImages[rect.slot];
+        if (img) {
+          await new Promise(resolve => {
+            const el = new Image();
+            el.onload = () => {
+              const s = Math.max(rect.w / el.width, rect.h / el.height);
+              const dw = el.width * s, dh = el.height * s;
+              ctx.save(); ctx.beginPath(); ctx.roundRect(rect.x, rect.y, rect.w, rect.h, tight ? 0 : Math.max(6, Math.min(rect.w,rect.h)*0.06)); ctx.clip();
+              ctx.drawImage(el, rect.x + (rect.w - dw) / 2, rect.y + (rect.h - dh) / 2, dw, dh);
+              ctx.restore(); resolve();
+            };
+            el.onerror = () => resolve();
+            el.src = img.src;
+          });
+        }
+      }
+
+      // ランキングバッジ（プリセット時のみ）
+      if (showRank) {
+        for (const rect of rects) {
+          if (!usableImages[rect.slot]) continue;
+          if (rankLimit > 0 && rect.slot >= rankLimit) continue;
+          const rc = rankColor(rect.slot);
+          const sz = Math.max(30, Math.min(rect.w, rect.h) * 0.22);
+          const bx = rect.x + sz * 0.28 + sz / 2;
+          const by = rect.y + sz * 0.28 + sz / 2;
+          ctx.save();
+          ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = sz*0.2; ctx.shadowOffsetY = sz*0.06;
+          ctx.beginPath(); ctx.arc(bx, by, sz/2, 0, Math.PI*2);
+          ctx.fillStyle = rc.bg; ctx.fill();
+          ctx.restore();
+          ctx.save();
+          ctx.fillStyle = rc.fg; ctx.font = `700 ${Math.round(sz*0.5)}px 'Space Grotesk', sans-serif`;
+          ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText(String(rect.slot+1), bx, by + sz*0.02);
+          ctx.restore();
+        }
+      }
+
+      const dataURL = cv.toDataURL("image/png");
       const a = document.createElement("a");
-      a.href = url; a.download = `moviegrid-${Date.now()}.png`;
+      a.href = dataURL; a.download = `moviegrid-${Date.now()}.png`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (err) {
       alert("書き出し失敗: " + err.message);
-    } finally { setExporting(false); }
-  };
-
-  // ── Web Share APIで画像を共有（スマホのみ）→ X / Threads ──
-  const shareImage = async (target) => {
-    if (n === 0 || exporting) return;
-    setExporting(true);
-    try {
-      const blob = await renderCanvasBlob();
-      const file = new File([blob], `moviegrid-${Date.now()}.png`, { type:"image/png" });
-      const text = showTitle && titleText ? titleText : "";
-      if (navigator.canShare && navigator.canShare({ files:[file] })) {
-        await navigator.share({ files:[file], text });
-      } else {
-        // フォールバック：画像を保存 → 各アプリで貼り付け
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = file.name;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        const label = target === "threads" ? "Threads" : "X";
-        alert(`画像を保存しました。${label}アプリを開いて貼り付けてください。\n（画像付き共有はスマホのみ対応です）`);
-      }
-    } catch (err) {
-      if (err.name !== "AbortError") alert("共有に失敗しました: " + err.message);
     } finally { setExporting(false); }
   };
 
@@ -1017,17 +992,8 @@ export default function App() {
               <button className="exp" onClick={exportImage} disabled={n===0 || exporting}>
                 {exporting ? "EXPORTING…" : "EXPORT PNG · 1440px"}
               </button>
-              <div className="share-row">
-                <button className="share-btn x" onClick={() => shareImage("x")} disabled={n===0 || exporting}>
-                  <span className="share-ic">𝕏</span>Xでシェア
-                </button>
-                <button className="share-btn th" onClick={() => shareImage("threads")} disabled={n===0 || exporting}>
-                  <span className="share-ic">@</span>Threadsでシェア
-                </button>
-              </div>
-              <p className="share-note">※ 画像付きシェアはスマホのみ対応（X / Threadsアプリが必要）</p>
               <div className="save-row">
-                <button className="save-btn" onClick={saveSettings}>SAVE</button>
+                <button className="save-btn" onClick={saveSettings}>SAVE GRID</button>
                 <button className="reset-btn" onClick={resetSettings}>RESET</button>
               </div>
               <p className="st">{saveStatus}</p>
@@ -1048,7 +1014,7 @@ export default function App() {
                 <div className="step">
                   <div className="step-hd"><span className="step-t">Find Films</span></div>
                   <div className="lang-toggle">
-                    {[["ja-JP","日本語"],["en-US","EN"]].map(([v,l]) => (
+                    {[["ja-JP","JP"],["en-US","EN"]].map(([v,l]) => (
                       <button key={v} className={`lang-btn${lang===v?" on":""}`} onClick={() => setLang(v)}>{l}</button>
                     ))}
                   </div>
@@ -1246,9 +1212,25 @@ export default function App() {
         </div>
 
         <footer className="footer">
-          <div className="footer-logo">MOVIE<span className="out">GRID</span><span className="hero-star">✦</span></div>
-          <p className="footer-sub">映画を検索してポスターを選ぶ。フォーマットを選ぶだけで、雑誌のようなSNS画像が完成する。</p>
-          <p className="footer-copy">© {new Date().getFullYear()} MOVIEGRID</p>
+          <div className="footer-left">
+            <div className="footer-logo">MOVIE<span className="out">GRID</span><span className="hero-star">✦</span></div>
+            <p className="footer-sub">映画を検索してポスターを選ぶ。フォーマットを選ぶだけで、雑誌のようなSNS画像が完成する。</p>
+          </div>
+          <div className="footer-right">
+            <p className="footer-op">運営：<b>ZANZO CHINEMA</b></p>
+            <div className="footer-social">
+              <a className="social-link" href="https://x.com/zanzo_chinema" target="_blank" rel="noopener noreferrer" aria-label="X">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+              </a>
+              <a className="social-link" href="https://www.threads.com/@zanzo_chinema" target="_blank" rel="noopener noreferrer" aria-label="Threads">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.04.569c-1.104-3.96-3.898-5.984-8.304-6.015-2.91.022-5.11.936-6.54 2.717C4.307 6.504 3.616 8.914 3.589 12c.027 3.086.718 5.496 2.056 7.164 1.43 1.78 3.631 2.695 6.54 2.717 2.623-.02 4.358-.631 5.8-2.045 1.647-1.613 1.618-3.593 1.09-4.798-.31-.71-.873-1.3-1.634-1.75-.192 1.352-.622 2.446-1.284 3.272-.886 1.102-2.14 1.704-3.73 1.79-1.202.065-2.361-.218-3.259-.801-1.063-.689-1.685-1.74-1.752-2.964-.065-1.19.408-2.285 1.33-3.082.88-.76 2.119-1.207 3.583-1.291a13.853 13.853 0 0 1 3.02.142c-.126-.742-.375-1.332-.742-1.756-.504-.582-1.283-.88-2.317-.887h-.028c-.831 0-1.958.227-2.679 1.301L7.58 6.98c.96-1.431 2.52-2.212 4.5-2.212h.032c3.311.02 5.284 2.058 5.481 5.606.113.048.225.098.334.15 1.542.727 2.67 1.828 3.263 3.184.828 1.895.906 4.987-1.612 7.478-1.925 1.9-4.257 2.755-7.573 2.78z"/></svg>
+              </a>
+              <a className="social-link" href="https://note.com/zanzo_chinema" target="_blank" rel="noopener noreferrer" aria-label="note">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4.7 3C3.21 3 2 4.21 2 5.7v12.6C2 19.79 3.21 21 4.7 21h14.6c1.49 0 2.7-1.21 2.7-2.7V8.62c0-.72-.28-1.4-.79-1.91l-3.72-3.72A2.7 2.7 0 0 0 15.58 3zm2.34 4.29h6.86c.53 0 .84.31.84.89v.03c0 .55-.31.86-.84.86H7.04c-.55 0-.86-.31-.86-.86v-.03c0-.58.31-.89.86-.89m0 3.72h9.92c.53 0 .84.31.84.86v.06c0 .55-.31.86-.84.86H7.04c-.55 0-.86-.31-.86-.86v-.06c0-.55.31-.86.86-.86m0 3.75h9.92c.53 0 .84.28.84.86v.03c0 .55-.31.86-.84.86H7.04c-.55 0-.86-.31-.86-.86v-.03c0-.58.31-.86.86-.86"/></svg>
+              </a>
+            </div>
+            <p className="footer-copy">© {new Date().getFullYear()} MOVIEGRID</p>
+          </div>
         </footer>
       </div>
 
